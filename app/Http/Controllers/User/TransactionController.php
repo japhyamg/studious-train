@@ -64,9 +64,10 @@ class TransactionController extends Controller implements HasMiddleware
             'factor_name' => 'required|string|unique:risk_scoring_configs,factor_name',
             'factor_description' => 'required|string',
             'weight' => 'required|integer|min:1',
-            'check_type' => 'required|in:transaction,customer',
+            'check_type' => 'required|in:transaction,customer,behaviour',
             'check_field' => 'required|string',
             'condition_operator' => 'required|string',
+            'window_days' => 'nullable|integer|min:1|max:365',
         ]);
 
         if ($validator->fails()) return back()->with('error', $validator->errors()->first());
@@ -81,6 +82,7 @@ class TransactionController extends Controller implements HasMiddleware
                 'field' => $request->check_field,
                 'operator' => $request->condition_operator,
                 'value' => $request->condition_value,
+                'window_days' => $request->window_days ? (int) $request->window_days : 7,
             ]),
         ]);
 
@@ -96,9 +98,10 @@ class TransactionController extends Controller implements HasMiddleware
         $validator = Validator::make($request->all(), [
             'factor_description' => 'required|string',
             'weight' => 'required|integer|min:1',
-            'check_type' => 'required|in:transaction,customer',
+            'check_type' => 'required|in:transaction,customer,behaviour',
             'check_field' => 'required|string',
             'condition_operator' => 'required|string',
+            'window_days' => 'nullable|integer|min:1|max:365',
         ]);
 
         if ($validator->fails()) return back()->with('error', $validator->errors()->first());
@@ -112,6 +115,7 @@ class TransactionController extends Controller implements HasMiddleware
                 'field' => $request->check_field,
                 'operator' => $request->condition_operator,
                 'value' => $request->condition_value,
+                'window_days' => $request->window_days ? (int) $request->window_days : 7,
             ]),
         ]);
 
