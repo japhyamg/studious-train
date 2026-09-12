@@ -62,7 +62,6 @@
             <div class="sidebar-submenu {{ request()->routeIs('watch-list.*') ? 'show' : '' }}">
                 <a href="{{ route('watch-list.internal.all') }}" class="sidebar-link {{ request()->routeIs('watch-list.internal.*') ? 'active' : '' }}">Internal</a>
                 <a href="{{ route('watch-list.nibss.all') }}" class="sidebar-link {{ request()->routeIs('watch-list.nibss.*') ? 'active' : '' }}">NIBSS</a>
-                @role('admin')<a href="{{ route('sanctions.index') }}" class="sidebar-link {{ request()->routeIs('sanctions.*') ? 'active' : '' }}">Sanction Lists</a>@endrole
             </div>
             @endcan
             @endcan
@@ -81,6 +80,7 @@
             <a href="{{ route('tools.view-validate-xml') }}" class="sidebar-link {{ request()->routeIs('tools.*') ? 'active' : '' }}"><i class="bi bi-file-earmark-code"></i> XML Validator</a>
             @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('Super-Admin'))
             <a href="{{ route('cron-jobs.status') }}" class="sidebar-link {{ request()->routeIs('cron-jobs.*') ? 'active' : '' }}"><i class="bi bi-arrow-repeat"></i> Cron Jobs</a>
+            <a href="{{ route('sanctions.index') }}" class="sidebar-link {{ request()->routeIs('sanctions.*') ? 'active' : '' }}"><i class="bi bi-globe2"></i> Sanction Lists</a>
             @endif
 
             {{-- Account --}}
