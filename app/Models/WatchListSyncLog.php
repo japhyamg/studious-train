@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class WatchListSyncLog extends Model
 {
+    protected $table = 'watchlist_sync_logs';
+
     protected $fillable = [
         'source', 'status', 'record_count', 'version', 'last_updated',
         'message', 'synced_at',

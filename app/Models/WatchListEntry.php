@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class WatchListEntry extends Model
 {
+    protected $table = 'watchlist_entries';
+
     protected $fillable = [
         'source', 'entity_type', 'first_name', 'middle_name', 'last_name',
         'full_name', 'aliases', 'country', 'date_of_birth', 'reference',

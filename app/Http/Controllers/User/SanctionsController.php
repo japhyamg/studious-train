@@ -28,7 +28,7 @@ class SanctionsController extends Controller implements HasMiddleware
             ->pluck('total', 'source');
 
         $latest = WatchListSyncLog::whereIn('id', function ($q) {
-                $q->selectRaw('MAX(id)')->from('watchlist_sync_logs')->groupBy('source');
+                $q->selectRaw('MAX(id)')->from((new WatchListSyncLog)->getTable())->groupBy('source');
             })
             ->get()
             ->keyBy('source');
