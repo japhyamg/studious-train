@@ -139,20 +139,13 @@ class FlaggedCasesAnalyticService
     {
         $threshold = (float) settings('false_positive_threshold', 30);
 
-        // strftime() is SQLite-only; MySQL uses DATE_FORMAT(). Pick the right
-        // expression for the active connection so this works in both environments.
-        $driver = FlaggedCase::getConnection()->getDriverName();
-        $monthExpr = $driver === 'sqlite'
-            ? "strftime('%Y-%m', created_at)"
-            : "DATE_FORMAT(created_at, '%Y-%m')";
-
-        $months = FlaggedCase::selectRaw("{$monthExpr} as month")
+        $months = FlaggedCase::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month")
             ->groupBy('month')->orderBy('month')->pluck('month');
 
         $data = [];
         foreach ($months as $index => $month) {
-            $total = FlaggedCase::whereRaw("{$monthExpr} = ?", [$month])->count();
-            $fp = FlaggedCase::whereRaw("{$monthExpr} = ?", [$month])
+            $total = FlaggedCase::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])->count();
+            $fp = FlaggedCase::whereRaw("DATE_FORMAT(created_at, '%Y-%m') = ?", [$month])
                 ->where('classification', 'false_positive')->count();
             $fpRate = $total > 0 ? round(($fp / $total) * 100, 1) : 0;
 
