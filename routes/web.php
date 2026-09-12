@@ -16,6 +16,7 @@ use App\Http\Controllers\User\AuditTrailController;
 use App\Http\Controllers\User\RiskRatingController;
 use App\Http\Controllers\User\PeerGroupAnalysisController;
 use App\Http\Controllers\User\PASController;
+use App\Http\Controllers\User\SanctionsController;
 use App\Http\Controllers\User\AIAlertController;
 use App\Http\Controllers\User\ToolController;
 
@@ -159,6 +160,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('pas')->name('pas.')->group(function () {
         Route::get('/', [PASController::class, 'index'])->name('index');
         Route::post('/screen', [PASController::class, 'screen'])->name('screen');
+    });
+
+    /*--- Sanction Lists (admin) ---*/
+    Route::prefix('sanctions')->name('sanctions.')->group(function () {
+        Route::get('/', [SanctionsController::class, 'index'])->name('index');
+        Route::post('/sync', [SanctionsController::class, 'sync'])->name('sync');
     });
 
     /*--- Peer Group Analysis ---*/

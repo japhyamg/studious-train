@@ -62,6 +62,7 @@
             <div class="sidebar-submenu {{ request()->routeIs('watch-list.*') ? 'show' : '' }}">
                 <a href="{{ route('watch-list.internal.all') }}" class="sidebar-link {{ request()->routeIs('watch-list.internal.*') ? 'active' : '' }}">Internal</a>
                 <a href="{{ route('watch-list.nibss.all') }}" class="sidebar-link {{ request()->routeIs('watch-list.nibss.*') ? 'active' : '' }}">NIBSS</a>
+                @role('admin')<a href="{{ route('sanctions.index') }}" class="sidebar-link {{ request()->routeIs('sanctions.*') ? 'active' : '' }}">Sanction Lists</a>@endrole
             </div>
             @endcan
             @endcan

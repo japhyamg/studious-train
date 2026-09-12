@@ -26,6 +26,12 @@ Schedule::call(function () {
     app(\App\Http\Controllers\CronJobController::class)->watchListScreening();
 })->weekly()->sundays()->at('03:00')->name('watchlist-screening')->withoutOverlapping();
 
+// Sanctions list refresh (OFAC, UN, Nigerian) — daily at 3:15 AM
+Schedule::command('sanctions:sync')
+    ->dailyAt('03:15')
+    ->name('sanctions-sync')
+    ->withoutOverlapping();
+
 // Auto Risk Rate New Customers — runs daily at 4:00 AM
 Schedule::call(function () {
     app(\App\Http\Controllers\CronJobController::class)->riskRateNewCustomers();

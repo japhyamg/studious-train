@@ -244,6 +244,32 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   reports counts. Repeat on the NIBSS page.
 - A headerless CSV (positional order) also imports.
 
+### 2.9 Phase 3.1 — Sanction sources + sync logs
+
+**What was added**
+- New `watchlist_entries` table — generic store for downloaded sanction lists
+  (OFAC Consolidated, UN Security Council Consolidated, Nigerian sanctions).
+- New `watchlist_sync_logs` table — per-source refresh audit (status, record
+  count, version, last-updated) to evidence CBN 5.3(a)(iii)/(iv).
+- `WatchListSyncService` downloads + parses each source (OFAC `CONS_ENHANCED.XML`,
+  UN `consolidated.xml`), replaces that source's entries in one transaction, and
+  writes a sync log + activity() entry per refresh.
+- `sanctions:sync {source?}` artisan command + daily 03:15 schedule
+  (`routes/console.php`).
+- Admin page **Watchlists → Sanction Lists** (`/sanctions`, `role:admin`) showing
+  per-source record counts / last sync / version, a per-source and "Sync All"
+  refresh, and the sync-log table.
+- Sources config lives in `config/sanctions.php`. The **Nigerian sanctions** source
+  ships disabled (no canonical machine-readable feed) — set `NIGERIA_SANCTIONS_URL`
+  and `SANCTIONS_NIGERIA_ENABLED=true` to wire it up. OFAC/UN are enabled by
+  default.
+
+**Test**
+- `php artisan migrate` then `php artisan sanctions:sync` (or the admin page →
+  "Sync All Sources") → OFAC and UN rows appear in `watchlist_entries` and
+  `watchlist_sync_logs`; the Nigerian source reports "skipped (no URL)".
+- Watchlists → Sanction Lists page shows counts + last sync + log rows.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -327,8 +353,9 @@ php artisan risk:rate
   false-positive dashboards.
 - ✅ **Phase 1** — risk-level change history + event-driven reviews.
 - ✅ **Phase 2** — Customer 360 single view (search + PDF/CSV export).
-- ⬜ **Phase 3** — screening as a service (nightly PAS, list-update logs,
-  fuzzy matching, PEP auto-flag).
+- 🔶 **Phase 3** — screening as a service (3.1 sanction sources + sync logs
+  done; 3.2 fuzzy matching, 3.3 nightly PAS, 3.4 PEP auto-flag, 3.5 block flag
+  pending).
 - ⬜ **Phase 4** — pre-emptive alert engine + multi-condition TTR scoring.
 - ⬜ **Phase 5** — case SLA/TAT, maker-checker, CTR generation, audit
   retention + exports.
