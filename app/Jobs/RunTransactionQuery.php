@@ -104,6 +104,7 @@ class RunTransactionQuery implements ShouldQueue
                     'total_score' => $risk->total_score,
                     'threshold' => $threshold,
                     'risk_level' => $risk->risk_level,
+                    'trigger_reason' => 'TTR ' . $risk->total_score,
                     'breakdown' => $risk->meta['score_breakdown'] ?? [],
                 ],
                 $txn,

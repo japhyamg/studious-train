@@ -86,39 +86,40 @@ class TransactionRiskScoringService
             $scoreBreakdown = [];
             $totalScore = 0;
 
-            // Evaluate each active factor dynamically
+            // Evaluate each active factor dynamically (multi-condition AND/OR).
             foreach ($this->factors as $factor) {
-                $conditions = is_array($factor->conditions)
+                $raw = is_array($factor->conditions)
                     ? $factor->conditions
                     : json_decode($factor->conditions, true);
 
-                if (!$conditions) continue;
+                if (!$raw || !is_array($raw)) continue;
 
-                $checkType = $conditions['check_type'] ?? 'transaction';
-                $field = $conditions['field'] ?? null;
-                $operator = $conditions['operator'] ?? 'equal_to';
-                $expectedValue = $conditions['value'] ?? null;
+                $normalized = $this->normalizeConditions($raw);
+                if (empty($normalized['conditions'])) continue;
 
-                if (!$field) continue;
+                $evaluation = $this->evaluateFactorConditions($normalized, $transaction, $customer);
 
-                // Get the actual value from the right source
-                $actualValue = $this->getFieldValue($checkType, $field, $transaction, $customer, $conditions);
+                if (!$evaluation['triggered']) continue;
 
-                // Evaluate the condition
-                $triggered = $this->evaluateCondition($actualValue, $operator, $expectedValue);
+                $matchedConditions = array_values(array_filter(
+                    $evaluation['results'],
+                    fn($r) => $r['matched']
+                ));
+                $first = $matchedConditions[0] ?? ($normalized['conditions'][0] ?? []);
 
-                if ($triggered) {
-                    $scoreBreakdown[$factor->factor_name] = [
-                        'factor' => $factor->factor_description,
-                        'score' => $factor->weight,
-                        'check_type' => $checkType,
-                        'field' => $field,
-                        'operator' => $operator,
-                        'expected' => $expectedValue,
-                        'actual' => $actualValue,
-                    ];
-                    $totalScore += $factor->weight;
-                }
+                $scoreBreakdown[$factor->factor_name] = [
+                    'factor' => $factor->factor_description,
+                    'score' => $factor->weight,
+                    'logic' => $normalized['logic'],
+                    'conditions' => $matchedConditions,
+                    // Legacy top-level keys kept for compatibility.
+                    'check_type' => $first['check_type'] ?? null,
+                    'field' => $first['field'] ?? null,
+                    'operator' => $first['operator'] ?? null,
+                    'expected' => $first['expected'] ?? null,
+                    'actual' => $first['actual'] ?? null,
+                ];
+                $totalScore += $factor->weight;
             }
 
             $result[] = [
@@ -131,6 +132,75 @@ class TransactionRiskScoringService
         }
 
         return $result;
+    }
+
+    /**
+     * Normalise a factor's conditions into a canonical shape:
+     * ['logic' => 'AND'|'OR', 'conditions' => [ sub-condition, … ]].
+     *
+     * Accepts both the legacy single-condition object
+     * ({check_type, field, operator, value, window_days}) and the new
+     * multi-condition object ({logic, conditions: [...]}).
+     */
+    protected function normalizeConditions(array $raw): array
+    {
+        // Legacy single-condition shape.
+        if (isset($raw['check_type']) || isset($raw['field']) || isset($raw['operator'])) {
+            return ['logic' => 'AND', 'conditions' => [$raw]];
+        }
+
+        // New multi-condition shape.
+        if (isset($raw['conditions']) && is_array($raw['conditions'])) {
+            return [
+                'logic' => (strtoupper($raw['logic'] ?? 'AND') === 'OR') ? 'OR' : 'AND',
+                'conditions' => array_values(array_filter($raw['conditions'], 'is_array')),
+            ];
+        }
+
+        return ['logic' => 'AND', 'conditions' => []];
+    }
+
+    /**
+     * Evaluate a factor's conditions with AND/OR semantics. Returns whether the
+     * factor triggered and the per-condition results (for the breakdown).
+     */
+    protected function evaluateFactorConditions(array $normalized, Transaction $transaction, Customer $customer): array
+    {
+        $logic = $normalized['logic'];
+        $results = [];
+        $triggered = false;
+
+        foreach ($normalized['conditions'] as $condition) {
+            $checkType = $condition['check_type'] ?? 'transaction';
+            $field = $condition['field'] ?? null;
+            $operator = $condition['operator'] ?? 'equal_to';
+            $expectedValue = $condition['value'] ?? null;
+
+            if (!$field) continue;
+
+            $actualValue = $this->getFieldValue($checkType, $field, $transaction, $customer, $condition);
+            $matched = $this->evaluateCondition($actualValue, $operator, $expectedValue);
+
+            $results[] = [
+                'check_type' => $checkType,
+                'field' => $field,
+                'operator' => $operator,
+                'expected' => $expectedValue,
+                'actual' => $actualValue,
+                'matched' => $matched,
+            ];
+
+            if ($logic === 'OR' && $matched) {
+                $triggered = true;
+            }
+        }
+
+        if ($logic === 'AND') {
+            $triggered = count($results) > 0
+                && collect($results)->every(fn($r) => $r['matched']);
+        }
+
+        return ['triggered' => $triggered, 'results' => $results];
     }
 
     /**

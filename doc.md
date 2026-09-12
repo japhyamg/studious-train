@@ -324,6 +324,34 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
 - Open a case → sidebar → Freeze Account → status flips to "Account Frozen"
   with timestamp + user; activity log records the freeze. Toggle again to lift.
 
+### 2.13 Phase 4.2 — multi-condition risk factors + TTR as trigger reason
+
+**What changed**
+- `risk_scoring_configs.conditions` now supports **multiple conditions with
+  AND/OR logic**: a factor can be either the legacy single-condition object or
+  `{logic: "AND"|"OR", conditions: [ … ]}`. The scoring engine normalises both
+  shapes, so existing factors keep working unchanged.
+- `TransactionRiskScoringService` evaluates factors with AND/OR semantics and
+  records every matched sub-condition in the score breakdown (explainability).
+- Risk-scoring config UI: **Match Logic (ALL/ANY)** selector + dynamic
+  "Add Condition" rows in both the Add and Edit modals; the factors table
+  renders every condition (joined by AND/OR).
+- KYC/history-derived factors seeded: `HIGH_FREQUENCY_TRANSACTION`
+  (`transaction_count` > 20 / 7d), `PRIOR_STR_HISTORY` (STR in 30d),
+  `PRIOR_CTR_HISTORY` (CTR in 30d) — via migration, so existing installs get
+  them.
+- **TTR score as trigger reason**: risk-scored cases now carry
+  `trigger_reason => "TTR {score}"` in `trigger_details`, and the case badge
+  shows `TTR 40` instead of a plain "Risk Score Exceeded" (CBN 5.5(a)(iv)).
+
+**Test**
+- `php artisan migrate` → the three behaviour factors appear on the risk-scoring
+  config page.
+- Add a factor with two conditions joined by AND and one with OR → the table
+  shows both conditions; scoring only awards the weight when the logic is
+  satisfied.
+- A risk-scored case shows `TTR {score}` as its trigger label.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -410,7 +438,9 @@ php artisan risk:rate
 - ✅ **Phase 3** — screening as a service (3.1 sanction sources + sync logs;
   3.2 fuzzy/scored matching; 3.3 nightly PAS; 3.4 PEP auto-flag; 3.5
   block/freeze flag — all done).
-- ⬜ **Phase 4** — pre-emptive alert engine + multi-condition TTR scoring.
+- 🔶 **Phase 4** — pre-emptive alert engine + TTR scoring (4.2 multi-condition
+  factors + TTR-as-reason done; 4.1 pre-emptive alerts, 4.3 peer-group docs,
+  4.4 AI explainability pending).
 - ⬜ **Phase 5** — case SLA/TAT, maker-checker, CTR generation, audit
   retention + exports.
 - ⬜ **Phase 6** — API docs, encryption, rule versioning, stress test, DR.

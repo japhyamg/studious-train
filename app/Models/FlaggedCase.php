@@ -97,12 +97,22 @@ class FlaggedCase extends Model
         return match($this->trigger_source) {
             self::SOURCE_RULE => 'Transaction Rule',
             self::SOURCE_WATCHLIST => 'Watchlist Match',
-            self::SOURCE_RISK_SCORE => 'Risk Score Exceeded',
+            self::SOURCE_RISK_SCORE => $this->riskScoreLabel(),
             self::SOURCE_AI_ANOMALY => 'AI Anomaly Detected',
             self::SOURCE_PEER_GROUP => 'Peer Group Outlier',
             self::SOURCE_PAS => 'PEP / Sanctions Screening',
             self::SOURCE_MANUAL => 'Manual',
             default => ucfirst($this->trigger_source ?? 'Unknown'),
         };
+    }
+
+    /**
+     * Surface the TTR (transaction risk) score as the trigger reason for
+     * risk-scored cases, e.g. "TTR 40" (CBN 5.5(a)(iv)).
+     */
+    protected function riskScoreLabel(): string
+    {
+        $score = $this->trigger_details['total_score'] ?? null;
+        return $score !== null ? 'TTR ' . $score : 'Risk Score Exceeded';
     }
 }

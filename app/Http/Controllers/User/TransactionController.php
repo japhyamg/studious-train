@@ -67,6 +67,8 @@ class TransactionController extends Controller implements HasMiddleware
             'check_type' => 'required|in:transaction,customer,behaviour',
             'check_field' => 'required|string',
             'condition_operator' => 'required|string',
+            'logic' => 'nullable|in:AND,OR',
+            'cond' => 'nullable|array',
             'window_days' => 'nullable|integer|min:1|max:365',
         ]);
 
@@ -77,13 +79,7 @@ class TransactionController extends Controller implements HasMiddleware
             'factor_description' => $request->factor_description,
             'weight' => $request->weight,
             'is_active' => $request->has('is_active'),
-            'conditions' => json_encode([
-                'check_type' => $request->check_type,
-                'field' => $request->check_field,
-                'operator' => $request->condition_operator,
-                'value' => $request->condition_value,
-                'window_days' => $request->window_days ? (int) $request->window_days : 7,
-            ]),
+            'conditions' => json_encode($this->buildConditions($request)),
         ]);
 
         activity()->log('Risk scoring factor created: ' . $request->factor_name);
@@ -101,6 +97,8 @@ class TransactionController extends Controller implements HasMiddleware
             'check_type' => 'required|in:transaction,customer,behaviour',
             'check_field' => 'required|string',
             'condition_operator' => 'required|string',
+            'logic' => 'nullable|in:AND,OR',
+            'cond' => 'nullable|array',
             'window_days' => 'nullable|integer|min:1|max:365',
         ]);
 
@@ -110,17 +108,53 @@ class TransactionController extends Controller implements HasMiddleware
             'factor_description' => $request->factor_description,
             'weight' => $request->weight,
             'is_active' => $request->has('is_active'),
-            'conditions' => json_encode([
-                'check_type' => $request->check_type,
-                'field' => $request->check_field,
-                'operator' => $request->condition_operator,
-                'value' => $request->condition_value,
-                'window_days' => $request->window_days ? (int) $request->window_days : 7,
-            ]),
+            'conditions' => json_encode($this->buildConditions($request)),
         ]);
 
         activity()->log('Risk scoring factor updated: ' . $config->factor_name);
         return redirect(route('transactions.risk-scoring-config'))->with('success', 'Risk scoring factor updated.');
+    }
+
+    /**
+     * Build the conditions payload from the primary condition plus any
+     * additional condition rows. One condition is stored in the legacy flat
+     * shape for backward compatibility; multiple conditions are stored as
+     * {logic, conditions: [...]} (AND/OR).
+     */
+    private function buildConditions(Request $request): array
+    {
+        $primary = [
+            'check_type' => $request->check_type,
+            'field' => $request->check_field,
+            'operator' => $request->condition_operator,
+            'value' => $request->condition_value,
+            'window_days' => $request->window_days ? (int) $request->window_days : 7,
+        ];
+
+        $extra = [];
+        foreach ((array) $request->input('cond', []) as $row) {
+            if (!is_array($row) || empty($row['field']) || empty($row['operator'])) continue;
+            $extra[] = [
+                'check_type' => in_array($row['check_type'] ?? null, ['transaction', 'customer', 'behaviour'], true)
+                    ? $row['check_type']
+                    : 'transaction',
+                'field' => $row['field'],
+                'operator' => $row['operator'],
+                'value' => $row['value'] ?? null,
+                'window_days' => !empty($row['window_days']) ? (int) $row['window_days'] : 7,
+            ];
+        }
+
+        $all = array_merge([$primary], $extra);
+
+        if (count($all) === 1) {
+            return $all[0];
+        }
+
+        return [
+            'logic' => strtoupper($request->input('logic', 'AND')) === 'OR' ? 'OR' : 'AND',
+            'conditions' => $all,
+        ];
     }
 
     public function destroyRiskConfig($id)
