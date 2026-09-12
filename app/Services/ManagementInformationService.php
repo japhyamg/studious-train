@@ -107,11 +107,15 @@ class ManagementInformationService
             ->get()
             ->groupBy('month');
 
-        return $months->map(fn($month) => [
-            'month' => $month,
-            'label' => Carbon::createFromFormat('Y-m', $month)->format('M y'),
-            'STR' => (int) ($rows[$month]?->where('report_type', 'STR')->sum('total') ?? 0),
-            'CTR' => (int) ($rows[$month]?->where('report_type', 'CTR')->sum('total') ?? 0),
-        ])->values()->toArray();
+        return $months->map(function ($month) use ($rows) {
+            $group = $rows->get($month);
+
+            return [
+                'month' => $month,
+                'label' => Carbon::createFromFormat('Y-m', $month)->format('M y'),
+                'STR' => (int) ($group?->where('report_type', 'STR')->sum('total') ?? 0),
+                'CTR' => (int) ($group?->where('report_type', 'CTR')->sum('total') ?? 0),
+            ];
+        })->values()->toArray();
     }
 }
