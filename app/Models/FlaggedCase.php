@@ -28,6 +28,7 @@ class FlaggedCase extends Model
     const SOURCE_RISK_SCORE = 'risk_score';
     const SOURCE_AI_ANOMALY = 'ai_anomaly';
     const SOURCE_PEER_GROUP = 'peer_group';
+    const SOURCE_PAS = 'pas';
     const SOURCE_MANUAL = 'manual';
 
     public function transaction_rule()
@@ -78,6 +79,7 @@ class FlaggedCase extends Model
             self::SOURCE_RISK_SCORE => 'Risk Score Exceeded',
             self::SOURCE_AI_ANOMALY => 'AI Anomaly Detected',
             self::SOURCE_PEER_GROUP => 'Peer Group Outlier',
+            self::SOURCE_PAS => 'PEP / Sanctions Screening',
             self::SOURCE_MANUAL => 'Manual',
             default => ucfirst($this->trigger_source ?? 'Unknown'),
         };

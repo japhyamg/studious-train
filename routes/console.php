@@ -32,6 +32,12 @@ Schedule::command('sanctions:sync')
     ->name('sanctions-sync')
     ->withoutOverlapping();
 
+// Nightly PAS screening of recently onboarded customers — daily at 2:30 AM
+Schedule::command('pas:screen-recent-customers')
+    ->dailyAt('02:30')
+    ->name('pas-screening')
+    ->withoutOverlapping();
+
 // Auto Risk Rate New Customers — runs daily at 4:00 AM
 Schedule::call(function () {
     app(\App\Http\Controllers\CronJobController::class)->riskRateNewCustomers();

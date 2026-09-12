@@ -235,6 +235,7 @@ Route::prefix('cron-job')->name('cron-job.')->middleware(['auth', 'role:admin'])
     Route::get('/review-scheduler', [\App\Http\Controllers\CronJobController::class, 'reviewScheduler'])->name('review-scheduler');
     Route::get('/24hr-rule-engine', [\App\Http\Controllers\CronJobController::class, 'dailyRuleEngine'])->name('24hr-rule-engine');
     Route::get('/watchlist-screening', [\App\Http\Controllers\CronJobController::class, 'watchListScreening'])->name('watchlist-screening');
+    Route::get('/pas-screening', [\App\Http\Controllers\CronJobController::class, 'pasScreening'])->name('pas-screening');
     Route::get('/risk-rate-new-customers', [\App\Http\Controllers\CronJobController::class, 'riskRateNewCustomers'])->name('risk-rate-new-customers');
     Route::get('/generate-ctr', [\App\Http\Controllers\CronJobController::class, 'generateCtr'])->name('generate-ctr');
     Route::get('/customer-sync', [\App\Http\Controllers\CronJobController::class, 'customerSync'])->name('customer-sync');

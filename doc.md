@@ -289,6 +289,26 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   includes a match_score ≥ 75 and the matched fields.
 - A clearly different name (e.g. "Jane Smith") produces no case.
 
+### 2.11 Phase 3.3 + 3.4 — nightly PAS + PEP auto-flag → EDD
+
+**What changed**
+- New `FlaggedCase::SOURCE_PAS` ("PEP / Sanctions Screening").
+- `PassScreeningService::screenRecentCustomers()` screens customers onboarded in
+  the last 24 h (PEP + sanctions + adverse media via `ScreeningService`), then:
+  - sanctions hit → case (SOURCE_PAS) + risk bump to CRITICAL;
+  - PEP hit → case + set `isPep` + raise risk to HIGH (or keep higher) + force an
+    event-driven EDD review via `applyRiskLevel()`.
+  - One PAS case per customer per day (dedup), so nightly re-runs don't spam.
+- `pas:screen-recent-customers {--hours=24}` artisan command + daily 02:30
+  schedule; manual trigger at `/cron-job/pas-screening` + a card on the Cron
+  Jobs dashboard.
+
+**Test**
+- `php artisan pas:screen-recent-customers` (or Cron Jobs → Nightly PAS →
+  "Run Now") → customers created in the last 24 h get `screening_results` rows;
+  a PEP/sanctions hit creates a `pas` case and bumps risk.
+- Re-running the same day does not duplicate the case.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -373,8 +393,8 @@ php artisan risk:rate
 - ✅ **Phase 1** — risk-level change history + event-driven reviews.
 - ✅ **Phase 2** — Customer 360 single view (search + PDF/CSV export).
 - 🔶 **Phase 3** — screening as a service (3.1 sanction sources + sync logs
-  done; 3.2 fuzzy/scored matching done; 3.3 nightly PAS, 3.4 PEP auto-flag,
-  3.5 block flag pending).
+  done; 3.2 fuzzy/scored matching done; 3.3 nightly PAS + 3.4 PEP auto-flag
+  done; 3.5 block/freeze flag pending).
 - ⬜ **Phase 4** — pre-emptive alert engine + multi-condition TTR scoring.
 - ⬜ **Phase 5** — case SLA/TAT, maker-checker, CTR generation, audit
   retention + exports.

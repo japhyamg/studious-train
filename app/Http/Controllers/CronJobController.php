@@ -135,6 +135,30 @@ class CronJobController extends Controller
     }
 
     /**
+     * 3b. Nightly PAS Screening (recently onboarded customers)
+     *     Runs daily — screens customers onboarded in the last 24 h and
+     *     auto-creates cases on PEP / sanctions hits.
+     *
+     *     URL: /cron-job/pas-screening
+     */
+    public function pasScreening()
+    {
+        try {
+            $service = new \App\Services\PassScreeningService();
+            $stats = $service->screenRecentCustomers();
+
+            $message = "Nightly PAS: {$stats['screened']} screened, {$stats['pep']} PEP, {$stats['sanctioned']} sanctioned, {$stats['cases']} cases.";
+            Log::info($message);
+            activity()->log($message);
+
+            return response()->json(['status' => 'success', 'message' => $message, 'stats' => $stats]);
+        } catch (\Exception $e) {
+            Log::error("Nightly PAS failed: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * 4. Auto Risk Rating (new customers)
      *    Runs daily — rates customers who were added in the last 24 hours
      *
@@ -250,6 +274,17 @@ class CronJobController extends Controller
                     'internal_entries' => \App\Models\InternalWatchList::count(),
                     'nibss_entries' => \App\Models\NibssWatchList::count(),
                     'customers' => Customer::count(),
+                ],
+            ],
+            'pas_screening' => [
+                'name' => 'Nightly PAS Screening',
+                'description' => 'Screens recently onboarded customers (PEP + sanctions) and auto-creates cases',
+                'frequency' => 'Daily',
+                'url' => route('cron-job.pas-screening'),
+                'stats' => [
+                    'recent_24h' => Customer::where('created_at', '>=', now()->subDay())->count(),
+                    'pep_flags' => Customer::where('isPep', true)->count(),
+                    'cases_today' => FlaggedCase::whereDate('created_at', today())->count(),
                 ],
             ],
             'auto_risk_rating' => [
