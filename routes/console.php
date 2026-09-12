@@ -31,6 +31,19 @@ Schedule::call(function () {
     app(\App\Http\Controllers\CronJobController::class)->riskRateNewCustomers();
 })->daily()->at('04:00')->name('risk-rate-new-customers')->withoutOverlapping();
 
+// Automated full risk rating (default profile) — nightly at 23:59.
+Schedule::command('risk:rate')
+    ->dailyAt('23:59')
+    ->name('risk-rating')
+    ->withoutOverlapping();
+
+// Demo cadence — re-rate every 2 minutes when demo mode is enabled.
+// The command exits early unless settings: risk_rating_demo_mode = true.
+Schedule::command('risk:rate --demo')
+    ->everyTwoMinutes()
+    ->name('risk-rating-demo')
+    ->withoutOverlapping();
+
 // CTR Generation — runs daily at 5:00 AM
 Schedule::call(function () {
     app(\App\Http\Controllers\CronJobController::class)->generateCtr();

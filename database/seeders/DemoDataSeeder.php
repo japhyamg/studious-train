@@ -172,6 +172,7 @@ class DemoDataSeeder extends Seeder
         Setting::firstOrCreate(['name' => 'pg_selected_fields'], ['value' => 'gender, customer_type']);
         Setting::firstOrCreate(['name' => 'pg_recompute_interval'], ['value' => '7']);
         Setting::firstOrCreate(['name' => 'risk_scoring_threshold'], ['value' => '100']);
+        Setting::firstOrCreate(['name' => 'risk_rating_demo_mode'], ['value' => 'false']);
 
         // Business Details
         BusinessDetails::firstOrCreate(['name' => 'business_name'], ['value' => 'FINSYT']);
