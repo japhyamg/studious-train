@@ -270,6 +270,25 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   `watchlist_sync_logs`; the Nigerian source reports "skipped (no URL)".
 - Watchlists → Sanction Lists page shows counts + last sync + log rows.
 
+### 2.10 Phase 3.2 — fuzzy/scored watchlist matching
+
+**What changed**
+- New `WatchListMatcher` replaces plain `LIKE` matching in `WatchListService`.
+  - 0–100 score: exact (100), token-set/reorder (98), subset (80–95), Jaccard
+    overlap and phonetic (metaphone) overlap.
+  - Exact BVN/NIN/account matches are decisive (score 100 + the matched field).
+- `searchList()` now uses a broad DB prefilter (identifier equality OR first-word
+  name prefix) and refines candidates with the matcher.
+- Hits carry `match_score` and `matched_fields` in the case `trigger_details`.
+- Threshold is `config('watchlists.match_threshold')` (default 75), overridable
+  at runtime via the `watchlist_match_threshold` setting.
+
+**Test**
+- With an internal watchlist entry "John Doe / BVN 123…", a transaction from
+  "John Doe" (or "Doe, John") triggers a watchlist case whose `trigger_details`
+  includes a match_score ≥ 75 and the matched fields.
+- A clearly different name (e.g. "Jane Smith") produces no case.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -354,8 +373,8 @@ php artisan risk:rate
 - ✅ **Phase 1** — risk-level change history + event-driven reviews.
 - ✅ **Phase 2** — Customer 360 single view (search + PDF/CSV export).
 - 🔶 **Phase 3** — screening as a service (3.1 sanction sources + sync logs
-  done; 3.2 fuzzy matching, 3.3 nightly PAS, 3.4 PEP auto-flag, 3.5 block flag
-  pending).
+  done; 3.2 fuzzy/scored matching done; 3.3 nightly PAS, 3.4 PEP auto-flag,
+  3.5 block flag pending).
 - ⬜ **Phase 4** — pre-emptive alert engine + multi-condition TTR scoring.
 - ⬜ **Phase 5** — case SLA/TAT, maker-checker, CTR generation, audit
   retention + exports.

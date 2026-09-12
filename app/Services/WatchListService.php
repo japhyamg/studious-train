@@ -48,6 +48,8 @@ class WatchListService
                 [
                     'watchlist' => $list,
                     'matched_records' => $result['results'][$list]['count'] ?? 0,
+                    'match_score' => $result['results'][$list]['score'] ?? 0,
+                    'matched_fields' => $result['results'][$list]['fields'] ?? [],
                     'subject' => $subject,
                 ],
                 $transaction,
@@ -112,26 +114,68 @@ class WatchListService
     protected function searchList(string $listKey, array $subject): array
     {
         $config = config("watchlists.{$listKey}");
-        if (!$config) return ['matched' => false, 'count' => 0, 'records' => collect()];
+        if (!$config) return ['matched' => false, 'count' => 0, 'records' => collect(), 'score' => 0, 'fields' => []];
 
-        $query = DB::table($config['table']);
-        $query->where(function ($q) use ($config, $subject) {
-            foreach ($config['fields'] as $field => $operator) {
-                if (empty($subject[$field])) continue;
-                if ($operator === 'like') {
-                    $q->orWhere($field, 'LIKE', '%' . $subject[$field] . '%');
-                } else {
-                    $q->orWhere($field, $subject[$field]);
-                }
+        $nameFields = collect($config['fields'])->filter(fn($op) => $op === 'like')->keys()->all();
+        $identifierFields = collect($config['fields'])->filter(fn($op) => $op !== 'like')->keys()->all();
+
+        $candidates = $this->candidateQuery($config, $subject, $nameFields, $identifierFields)->get();
+
+        $matcher = new WatchListMatcher();
+
+        $matches = collect();
+        $bestScore = 0;
+        $bestFields = [];
+
+        foreach ($candidates as $record) {
+            $record = (array) $record;
+            $result = $matcher->match($subject, $record, $nameFields, $identifierFields);
+
+            if (!$result['matched']) continue;
+
+            $record['match_score'] = $result['score'];
+            $record['matched_fields'] = $result['fields'];
+            $matches->push((object) $record);
+
+            if ($result['score'] > $bestScore) {
+                $bestScore = $result['score'];
+                $bestFields = $result['fields'];
             }
-        });
-
-        $matches = $query->get();
+        }
 
         return [
             'matched' => $matches->isNotEmpty(),
             'count' => $matches->count(),
             'records' => $matches,
+            'score' => $bestScore,
+            'fields' => $bestFields,
         ];
+    }
+
+    /**
+     * Broad candidate prefilter: exact identifier matches (BVN/NIN/account)
+     * OR first-word name prefix hits — then refined by the fuzzy matcher.
+     */
+    protected function candidateQuery(array $config, array $subject, array $nameFields, array $identifierFields)
+    {
+        $query = DB::table($config['table']);
+
+        $query->where(function ($q) use ($subject, $nameFields, $identifierFields) {
+            foreach ($identifierFields as $field) {
+                if (!empty($subject[$field])) {
+                    $q->orWhere($field, $subject[$field]);
+                }
+            }
+
+            foreach ($nameFields as $field) {
+                if (empty($subject[$field])) continue;
+                $word = strtok(trim((string) $subject[$field]), " ");
+                if ($word !== false && $word !== '') {
+                    $q->orWhere($field, 'LIKE', $word . '%');
+                }
+            }
+        });
+
+        return $query;
     }
 }
