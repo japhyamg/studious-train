@@ -309,6 +309,21 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   a PEP/sanctions hit creates a `pas` case and bumps risk.
 - Re-running the same day does not duplicate the case.
 
+### 2.12 Phase 3.5 — account interdiction (block/freeze) workflow
+
+**What changed**
+- `flagged_cases` gains `interdiction_status` (`none`/`frozen`/`lifted`),
+  `interdicted_at`, `interdicted_by`.
+- Case detail sidebar shows an **Account Interdiction** card: current status,
+  who/when it was set, and a **Freeze Account / Lift Freeze** toggle
+  (`POST /case-management/interdict/{slug}`), all logged via activity().
+- Documented as **post-facto** — the flag records the decision; real-time
+  core-banking enforcement needs a future integration (CBN 5.3(a)(viii)).
+
+**Test**
+- Open a case → sidebar → Freeze Account → status flips to "Account Frozen"
+  with timestamp + user; activity log records the freeze. Toggle again to lift.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -392,9 +407,9 @@ php artisan risk:rate
   false-positive dashboards.
 - ✅ **Phase 1** — risk-level change history + event-driven reviews.
 - ✅ **Phase 2** — Customer 360 single view (search + PDF/CSV export).
-- 🔶 **Phase 3** — screening as a service (3.1 sanction sources + sync logs
-  done; 3.2 fuzzy/scored matching done; 3.3 nightly PAS + 3.4 PEP auto-flag
-  done; 3.5 block/freeze flag pending).
+- ✅ **Phase 3** — screening as a service (3.1 sanction sources + sync logs;
+  3.2 fuzzy/scored matching; 3.3 nightly PAS; 3.4 PEP auto-flag; 3.5
+  block/freeze flag — all done).
 - ⬜ **Phase 4** — pre-emptive alert engine + multi-condition TTR scoring.
 - ⬜ **Phase 5** — case SLA/TAT, maker-checker, CTR generation, audit
   retention + exports.

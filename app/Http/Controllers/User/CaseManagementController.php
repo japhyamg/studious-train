@@ -200,6 +200,36 @@ class CaseManagementController extends Controller implements HasMiddleware
         return Response::json(['status' => 'failed']);
     }
 
+    /**
+     * Toggle the account interdiction (block/freeze) flag on a case.
+     * Post-facto workflow — records the decision until a real-time
+     * core-banking integration exists (CBN 5.3(a)(viii)).
+     */
+    public function toggleInterdiction(Request $request, $id)
+    {
+        $case = FlaggedCase::where('slug', $id)->first();
+
+        if ($case) {
+            $isFrozen = $case->interdiction_status === FlaggedCase::INTERDICTION_FROZEN;
+
+            $case->interdiction_status = $isFrozen
+                ? FlaggedCase::INTERDICTION_LIFTED
+                : FlaggedCase::INTERDICTION_FROZEN;
+            $case->interdicted_at = $isFrozen ? null : now();
+            $case->interdicted_by = $isFrozen ? null : Auth::id();
+            $case->update();
+
+            activity()->performedOn($case)->log(
+                $isFrozen ? 'Account freeze lifted for case ' . $case->slug
+                          : 'Account frozen (post-facto) for case ' . $case->slug
+            );
+
+            return Response::json(['status' => 'success', 'interdiction_status' => $case->interdiction_status]);
+        }
+
+        return Response::json(['status' => 'failed']);
+    }
+
     public function export(Request $request)
     {
         $request->validate([

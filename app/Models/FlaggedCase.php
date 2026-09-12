@@ -15,11 +15,13 @@ class FlaggedCase extends Model
         'type', 'trigger_source', 'trigger_details',
         'status', 'classification', 'report_type',
         'indicator_id', 'user_id', 'closed_by',
+        'interdiction_status', 'interdicted_at', 'interdicted_by',
     ];
 
     protected $casts = [
         'transaction_ids' => 'array',
         'trigger_details' => 'array',
+        'interdicted_at' => 'datetime',
     ];
 
     // Trigger source constants
@@ -30,6 +32,11 @@ class FlaggedCase extends Model
     const SOURCE_PEER_GROUP = 'peer_group';
     const SOURCE_PAS = 'pas';
     const SOURCE_MANUAL = 'manual';
+
+    // Interdiction status constants (CBN 5.3(a)(viii))
+    const INTERDICTION_NONE = 'none';
+    const INTERDICTION_FROZEN = 'frozen';
+    const INTERDICTION_LIFTED = 'lifted';
 
     public function transaction_rule()
     {
@@ -54,6 +61,20 @@ class FlaggedCase extends Model
     public function reviewer()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function interdictingUser()
+    {
+        return $this->belongsTo(User::class, 'interdicted_by');
+    }
+
+    public function getInterdictionLabelAttribute(): string
+    {
+        return match ($this->interdiction_status) {
+            self::INTERDICTION_FROZEN => 'Account Frozen',
+            self::INTERDICTION_LIFTED => 'Freeze Lifted',
+            default => 'No Interdiction',
+        };
     }
 
     public function closedByUser()

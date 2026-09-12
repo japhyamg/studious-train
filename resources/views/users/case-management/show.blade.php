@@ -279,6 +279,24 @@
             </div>
         </div>
 
+        {{-- Account Interdiction --}}
+        <div class="card mb-4">
+            <div class="card-header"><span><i class="bi bi-lock me-2"></i> Account Interdiction</span></div>
+            <div class="card-body text-center">
+                @php $frozen = $case->interdiction_status === \App\Models\FlaggedCase::INTERDICTION_FROZEN; @endphp
+                <div class="p-3 rounded-3 mb-3" style="background:{{ $frozen ? '#fef2f2' : '#f8f8f6' }};border:1px solid {{ $frozen ? '#fecaca' : '#e4e3e0' }}">
+                    <div style="font-size:13px;font-weight:700;color:{{ $frozen ? '#dc2626' : '#6b6860' }}">{{ $frozen ? 'Account Frozen' : 'No Interdiction' }}</div>
+                    @if($case->interdicted_at)
+                    <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px">{{ $case->interdicted_at->format('M d, Y H:i') }} · {{ $case->interdictingUser?->name ?? 'System' }}</div>
+                    @endif
+                </div>
+                <button class="btn btn-sm {{ $frozen ? 'btn-outline-secondary' : 'btn-outline-danger' }}" id="interdictBtn">
+                    <i class="bi {{ $frozen ? 'bi-unlock' : 'bi-lock' }} me-1"></i>{{ $frozen ? 'Lift Freeze' : 'Freeze Account' }}
+                </button>
+                <p style="font-size:10px;color:var(--text-muted);margin:10px 0 0">Post-facto flag — no real-time core-banking integration yet (CBN 5.3(a)(viii)).</p>
+            </div>
+        </div>
+
         {{-- NFIU Indicator --}}
         <div class="card mb-4">
             <div class="card-header"><span><i class="bi bi-flag me-2"></i> NFIU Indicator</span></div>
@@ -341,6 +359,11 @@ document.getElementById('toggleClassBtn')?.addEventListener('click', () => {
 document.getElementById('nfiuSelect')?.addEventListener('change', function() {
     if (!this.value) return;
     fetch('{{ route("case-management.set-nfiu-indicator", $case->slug) }}', {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'}, body:JSON.stringify({indicator_id: this.value})})
+    .then(r => r.json()).then(d => { if (d.status === 'success') location.reload(); });
+});
+document.getElementById('interdictBtn')?.addEventListener('click', () => {
+    if (!confirm('Toggle account interdiction for this case?')) return;
+    fetch('{{ route("case-management.interdict", $case->slug) }}', {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json'}})
     .then(r => r.json()).then(d => { if (d.status === 'success') location.reload(); });
 });
 </script>

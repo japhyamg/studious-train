@@ -63,6 +63,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update/{id}', [CaseManagementController::class, 'update'])->name('update');
         Route::post('/toogle-classification/{id}', [CaseManagementController::class, 'toogleClass'])->name('toogle-class');
         Route::post('/set-nfiu-indicator/{id}', [CaseManagementController::class, 'setNfiuIndicator'])->name('set-nfiu-indicator');
+        Route::post('/interdict/{id}', [CaseManagementController::class, 'toggleInterdiction'])->name('interdict');
         Route::post('/export', [CaseManagementController::class, 'export'])->name('export');
         Route::get('/performance', [CaseManagementController::class, 'casePerformance'])->name('performance');
         Route::get('/performance/export', [CaseManagementController::class, 'exportPerformance'])->name('performance.export');
