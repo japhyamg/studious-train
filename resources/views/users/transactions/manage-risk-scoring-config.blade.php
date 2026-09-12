@@ -1,0 +1,313 @@
+@extends('layouts.app')
+@section('title', 'Transaction Risk Scoring')
+@section('breadcrumb')
+    <a href="{{ route('dashboard') }}">Dashboard</a><span class="sep">/</span>
+    <a href="{{ route('transactions.index') }}">Transactions</a><span class="sep">/</span>
+    <span class="current">Risk Scoring Config</span>
+@endsection
+@section('page-title', 'Transaction Risk Scoring Configuration')
+
+@php $threshold = settings('risk_scoring_threshold', 100); @endphp
+
+@section('content')
+
+{{-- Threshold + Summary --}}
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="kpi-card" style="border-left:3px solid var(--green-700)">
+            <div class="kpi-label">Alert Threshold</div>
+            <div class="kpi-value">{{ $threshold }}</div>
+            <div class="kpi-sub">Transactions scoring ≥ this value will trigger an alert.</div>
+            <form method="POST" action="{{ route('transactions.risk-scoring-config.update-threshold') }}" class="mt-3 d-flex gap-2">
+                @csrf
+                <input type="number" name="threshold" class="form-control form-control-sm" style="width:100px" value="{{ $threshold }}" min="1" required>
+                <button type="submit" class="btn btn-primary btn-sm">Update</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="kpi-card">
+            <div class="kpi-label">Total Weight (Active)</div>
+            <div class="kpi-value">{{ $total_threshold }}</div>
+            <div class="kpi-sub">Sum of all active factor weights</div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="kpi-card">
+            <div class="kpi-label">Active Factors</div>
+            <div class="kpi-value">{{ $data->where('is_active', true)->count() }} <span style="font-size:14px;color:var(--text-muted)">/ {{ $data->count() }}</span></div>
+            <div class="kpi-sub">factors enabled</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    {{-- Add Factor --}}
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-plus-circle me-1"></i> Add Risk Factor</div>
+            <div class="card-body">
+                <form method="POST" action="{{ route('transactions.risk-scoring-config.store') }}">
+                    @csrf
+                    <div class="mb-3">
+                        <label class="form-label">Factor Name *</label>
+                        <input type="text" name="factor_name" class="form-control form-control-sm" required placeholder="e.g. HIGH_FREQUENCY">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description *</label>
+                        <input type="text" name="factor_description" class="form-control form-control-sm" required placeholder="e.g. More than 10 transactions per hour">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Checks Against *</label>
+                        <select name="check_type" class="form-select form-select-sm check-type-select" required onchange="updateFieldOptions(this, this.closest('form').querySelector('.check-field-select'))">
+                            <option value="">— Select —</option>
+                            <option value="transaction">Transaction Data</option>
+                            <option value="customer">Customer Data</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Field to Check *</label>
+                        <select name="check_field" class="form-select form-select-sm check-field-select" required>
+                            <option value="">— Select "Checks Against" first —</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Condition *</label>
+                        <div class="row g-2">
+                            <div class="col-5">
+                                <select name="condition_operator" class="form-select form-select-sm">
+                                    <option value="greater_than">Greater Than</option>
+                                    <option value="equal_to">Equal To</option>
+                                    <option value="not_equal_to">Not Equal To</option>
+                                    <option value="less_than">Less Than</option>
+                                    <option value="greater_than_equal">≥</option>
+                                    <option value="less_than_equal">≤</option>
+                                    <option value="contains">Contains</option>
+                                    <option value="is_true">Is True/Yes</option>
+                                </select>
+                            </div>
+                            <div class="col-7">
+                                <input type="text" name="condition_value" class="form-control form-control-sm" placeholder="e.g. 1000000 or yes or high">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Weight (Points) *</label>
+                        <input type="number" name="weight" class="form-control form-control-sm" required min="1" placeholder="e.g. 15">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="newIsActive" checked>
+                        <label class="form-check-label" for="newIsActive" style="font-size:12px">Active</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-check me-1"></i>Add Factor</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Factors Table --}}
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Risk Scoring Factors</div>
+            <div class="card-body p-0">
+                <div class="table-responsive"><table class="table table-hover mb-0">
+                    <thead><tr><th>Factor</th><th>Checks</th><th>Condition</th><th>Weight</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        @forelse($data as $config)
+                        @php
+                            $cond = is_array($config->conditions) ? $config->conditions : json_decode($config->conditions, true);
+                            $checkType = $cond['check_type'] ?? '—';
+                            $field = $cond['field'] ?? $cond['check_field'] ?? '—';
+                            $operator = $cond['operator'] ?? '—';
+                            $condValue = $cond['value'] ?? '';
+                        @endphp
+                        <tr>
+                            <td>
+                                <div class="fw-medium" style="font-size:11px;font-family:monospace">{{ $config->factor_name }}</div>
+                                <div style="font-size:11px;color:var(--text-muted)">{{ $config->factor_description }}</div>
+                            </td>
+                            <td>
+                                <span class="badge {{ $checkType == 'customer' ? 'bg-info' : 'bg-primary' }} bg-opacity-15" style="color:{{ $checkType == 'customer' ? '#0891b2' : 'var(--green-700)' }};font-size:10px">{{ ucfirst($checkType) }}</span>
+                                <div style="font-size:10px;color:var(--text-muted);margin-top:2px">{{ $field }}</div>
+                            </td>
+                            <td style="font-size:11px">{{ $operator }} {{ $condValue }}</td>
+                            <td><span class="badge" style="background:var(--green-700);color:#fff">{{ $config->weight }}</span></td>
+                            <td><span class="badge {{ $config->is_active ? 'bg-success' : 'bg-secondary' }}" style="font-size:10px">{{ $config->is_active ? 'Active' : 'Inactive' }}</span></td>
+                            <td>
+                                <button class="btn btn-outline-primary btn-action" data-bs-toggle="modal" data-bs-target="#editConfigModal"
+                                    data-id="{{ $config->id }}"
+                                    data-name="{{ $config->factor_name }}"
+                                    data-desc="{{ $config->factor_description }}"
+                                    data-weight="{{ $config->weight }}"
+                                    data-active="{{ $config->is_active ? '1' : '0' }}"
+                                    data-check-type="{{ $checkType }}"
+                                    data-field="{{ $field }}"
+                                    data-operator="{{ $operator }}"
+                                    data-cond-value="{{ $condValue }}"
+                                ><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-outline-danger btn-action" onclick="deleteConfig({{ $config->id }})"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="6" class="text-center py-4 text-muted">No factors configured.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Edit Modal — full form matching create --}}
+<div class="modal fade" id="editConfigModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <form method="POST" id="editConfigForm">@csrf @method('PUT')
+        <div class="modal-header"><h6 class="modal-title">Edit Risk Factor</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="mb-3">
+                <label class="form-label">Factor Name</label>
+                <input type="text" id="edit_config_name" class="form-control form-control-sm bg-light" readonly>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Description *</label>
+                <input type="text" name="factor_description" id="edit_config_desc" class="form-control form-control-sm" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Checks Against *</label>
+                <select name="check_type" id="edit_check_type" class="form-select form-select-sm check-type-select" required onchange="updateFieldOptions(this, document.getElementById('edit_check_field'))">
+                    <option value="">— Select —</option>
+                    <option value="transaction">Transaction Data</option>
+                    <option value="customer">Customer Data</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Field to Check *</label>
+                <select name="check_field" id="edit_check_field" class="form-select form-select-sm check-field-select" required>
+                    <option value="">— Select —</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Condition *</label>
+                <div class="row g-2">
+                    <div class="col-5">
+                        <select name="condition_operator" id="edit_operator" class="form-select form-select-sm">
+                            <option value="greater_than">Greater Than</option>
+                            <option value="equal_to">Equal To</option>
+                            <option value="not_equal_to">Not Equal To</option>
+                            <option value="less_than">Less Than</option>
+                            <option value="greater_than_equal">≥</option>
+                            <option value="less_than_equal">≤</option>
+                            <option value="contains">Contains</option>
+                            <option value="is_true">Is True/Yes</option>
+                        </select>
+                    </div>
+                    <div class="col-7">
+                        <input type="text" name="condition_value" id="edit_cond_value" class="form-control form-control-sm" placeholder="e.g. 1000000">
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Weight (Points) *</label>
+                <input type="number" name="weight" id="edit_config_weight" class="form-control form-control-sm" required min="1">
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" name="is_active" id="edit_config_active">
+                <label class="form-check-label" for="edit_config_active" style="font-size:12px">Active</label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-sm btn-primary">Update Factor</button>
+        </div>
+    </form>
+</div></div></div>
+@endsection
+
+@push('scripts')
+<script>
+const transactionFields = [
+    {value: 'amount', label: 'Amount'},
+    {value: 'transaction_type', label: 'Transaction Type'},
+    {value: 'channel', label: 'Channel'},
+    {value: 'location', label: 'Location'},
+    {value: 'narration', label: 'Narration'},
+    {value: 'sender_account_no', label: 'Sender Account No'},
+    {value: 'beneficiary_account_no', label: 'Beneficiary Account No'},
+    {value: 'sender_account_type', label: 'Sender Account Type'},
+    {value: 'beneficiary_account_type', label: 'Beneficiary Account Type'},
+    {value: 'transaction_ref', label: 'Transaction Reference'},
+];
+
+const customerFields = [
+    {value: 'isPep', label: 'PEP Status (isPep)'},
+    {value: 'customer_type', label: 'Customer Type'},
+    {value: 'account_type', label: 'Account Type'},
+    {value: 'tier_level', label: 'Tier Level'},
+    {value: 'current_risk_level', label: 'Current Risk Level'},
+    {value: 'gender', label: 'Gender'},
+    {value: 'state_of_residence', label: 'State of Residence'},
+];
+
+/**
+ * Update field dropdown based on check type selection
+ * @param {HTMLSelectElement} checkTypeSelect - the "Checks Against" dropdown
+ * @param {HTMLSelectElement} fieldSelect - the "Field to Check" dropdown
+ * @param {string|null} preselect - value to pre-select after populating
+ */
+function updateFieldOptions(checkTypeSelect, fieldSelect, preselect = null) {
+    const checkType = checkTypeSelect.value;
+    const fields = checkType === 'transaction' ? transactionFields : (checkType === 'customer' ? customerFields : []);
+
+    fieldSelect.innerHTML = '';
+
+    if (fields.length === 0) {
+        fieldSelect.innerHTML = '<option value="">— Select "Checks Against" first —</option>';
+        return;
+    }
+
+    fieldSelect.innerHTML = '<option value="" disabled>Select field...</option>';
+    fields.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.value;
+        opt.textContent = f.label;
+        if (preselect && f.value === preselect) opt.selected = true;
+        fieldSelect.appendChild(opt);
+    });
+
+    // If no preselect matched, select first real option
+    if (!preselect) fieldSelect.selectedIndex = 0;
+}
+
+// Edit modal — populate ALL fields from data attributes
+document.getElementById('editConfigModal')?.addEventListener('show.bs.modal', function(e) {
+    const b = e.relatedTarget;
+
+    // Set form action
+    document.getElementById('editConfigForm').action = '/transactions/risk-scoring-config/' + b.dataset.id;
+
+    // Basic fields
+    document.getElementById('edit_config_name').value = b.dataset.name;
+    document.getElementById('edit_config_desc').value = b.dataset.desc;
+    document.getElementById('edit_config_weight').value = b.dataset.weight;
+    document.getElementById('edit_config_active').checked = b.dataset.active === '1';
+
+    // Condition fields
+    document.getElementById('edit_operator').value = b.dataset.operator || 'equal_to';
+    document.getElementById('edit_cond_value').value = b.dataset.condValue || '';
+
+    // Checks Against + Field to Check (need to populate field dropdown first)
+    const checkTypeSelect = document.getElementById('edit_check_type');
+    const fieldSelect = document.getElementById('edit_check_field');
+    checkTypeSelect.value = b.dataset.checkType || '';
+
+    // Populate field dropdown and pre-select the correct field
+    updateFieldOptions(checkTypeSelect, fieldSelect, b.dataset.field || null);
+});
+
+function deleteConfig(id) {
+    if (!confirm('Delete this risk factor?')) return;
+    fetch('/transactions/risk-scoring-config/' + id, {
+        method: 'DELETE', headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json'}
+    }).then(r => r.json()).then(d => { if (d.status === 'success') location.reload(); });
+}
+</script>
+@endpush
