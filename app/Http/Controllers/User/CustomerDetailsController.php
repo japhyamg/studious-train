@@ -206,7 +206,10 @@ class CustomerDetailsController extends Controller implements HasMiddleware
         ];
 
         foreach ($riskChanges as $i => $change) {
-            $rows[] = ["Risk Change #" . ($i + 1), "{$change->from_level ?? '—'} → {$change->to_level ?? '—'} (score {$change->score}) on {$change->created_at?->format('Y-m-d H:i')} — {$change->driver}"];
+            $fromLevel = $change->from_level ?? '—';
+            $toLevel   = $change->to_level ?? '—';
+            $changeDate = $change->created_at?->format('Y-m-d H:i') ?? '—';
+            $rows[] = ["Risk Change #" . ($i + 1), "{$fromLevel} → {$toLevel} (score {$change->score}) on {$changeDate} — {$change->driver}"];
         }
 
         if ($format === 'pdf') {
