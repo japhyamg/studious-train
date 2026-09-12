@@ -86,7 +86,7 @@ class NIBSSWatchListController extends Controller implements HasMiddleware
     public function upload(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,xlsx,xls',
+            'file' => 'required|file|mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
 
         try {
