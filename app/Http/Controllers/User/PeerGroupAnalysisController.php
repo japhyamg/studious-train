@@ -28,7 +28,7 @@ class PeerGroupAnalysisController extends Controller
 
         $outliers = PeerGroupOutlier::with(['transaction', 'customer'])
             ->orderByDesc('created_at')
-            ->paginate(15);
+            ->paginate(10);
 
         $stats = [
             'flagged' => PeerGroupOutlier::where('is_flagged', true)->count(),
@@ -72,7 +72,7 @@ class PeerGroupAnalysisController extends Controller
         }
 
         $page = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
-        $perPage = 15;
+        $perPage = 10;
 
         return new \Illuminate\Pagination\LengthAwarePaginator(
             $rows->forPage($page, $perPage)->values(),
