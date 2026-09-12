@@ -51,12 +51,10 @@ class RiskRatingService
             'score' => $score,
         ]);
 
-        // Update customer's current risk level
+        // Update customer's current risk level (records a change when the
+        // classification moves, and triggers an event-driven review).
         $level = $this->findRiskLevel($score);
-        $customer->update([
-            'current_risk_score' => $score,
-            'current_risk_level' => $level?->label,
-        ]);
+        $customer->applyRiskLevel($level?->label, $score, 'scheduled_rating');
 
         return $score;
     }

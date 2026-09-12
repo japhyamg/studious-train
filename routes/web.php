@@ -64,9 +64,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/set-nfiu-indicator/{id}', [CaseManagementController::class, 'setNfiuIndicator'])->name('set-nfiu-indicator');
         Route::post('/export', [CaseManagementController::class, 'export'])->name('export');
         Route::get('/performance', [CaseManagementController::class, 'casePerformance'])->name('performance');
+        Route::get('/performance/export', [CaseManagementController::class, 'exportPerformance'])->name('performance.export');
         Route::get('/carrd', [CaseManagementController::class, 'carrd'])->name('carrd');
         Route::get('/carrd-data', [CaseManagementController::class, 'carrdData'])->name('carrd.data');
+        Route::get('/carrd/export', [CaseManagementController::class, 'exportCarrd'])->name('carrd.export');
         Route::get('/false-positive-dashboard', [CaseManagementController::class, 'falsePositiveDashboard'])->name('false-positive-dashboard');
+        Route::get('/false-positive-dashboard/export', [CaseManagementController::class, 'exportFalsePositive'])->name('false-positive-dashboard.export');
         Route::post('/set-false-positive-threshold', [CaseManagementController::class, 'setFalsePositiveThreshold'])->name('set-false-positive-threshold');
     });
 
@@ -126,6 +129,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/view/{id}', [RiskRatingController::class, 'viewRiskRating'])->name('view');
         Route::delete('/delete', [RiskRatingController::class, 'destroyRiskRating'])->name('destroy');
         Route::get('/export/{id}/{format}', [RiskRatingController::class, 'exportRiskRating'])->name('export');
+        Route::get('/risk-level-changes/export', [RiskRatingController::class, 'exportRiskLevelChanges'])->name('risk-level-changes.export');
         Route::match(['get', 'post'], '/reviews-due', [RiskRatingController::class, 'reviewsDue'])->name('reviews-due');
 
         Route::prefix('manage-risk-level')->name('manage-risk-level.')->group(function () {

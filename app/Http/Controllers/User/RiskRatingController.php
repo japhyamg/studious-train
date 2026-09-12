@@ -16,6 +16,7 @@ use App\Exports\RiskProfileExport;
 use App\Imports\RiskProfileTemplateImport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RiskRatingResultsExport;
+use App\Exports\RiskLevelChangesExport;
 use Illuminate\Routing\Controllers\Middleware;
 use Illuminate\Routing\Controllers\HasMiddleware;
 
@@ -73,11 +74,7 @@ class RiskRatingController extends Controller implements HasMiddleware
             $riskLevel = mapScoreToRiskLevel($result->score);
             if (!$riskLevel) continue;
 
-            $customer->update([
-                'current_risk_level' => $riskLevel->label,
-                'current_risk_score' => $result->score,
-            ]);
-
+            $customer->applyRiskLevel($riskLevel->label, $result->score, 'scheduled_rating');
             $customer->scheduleNextReview();
         }
     }
@@ -122,6 +119,16 @@ class RiskRatingController extends Controller implements HasMiddleware
         }
 
         return back()->with('error', 'Unsupported format.');
+    }
+
+    /**
+     * Export the history of customer risk-level changes and their drivers
+     * (CBN baseline 5.4(a)(v)).
+     */
+    public function exportRiskLevelChanges()
+    {
+        $fileName = 'MoniSurv_RiskLevelChanges_' . now()->format('Y-m-d');
+        return Excel::download(new RiskLevelChangesExport, $fileName . '.xlsx');
     }
 
     public function destroyRiskRating(Request $request)

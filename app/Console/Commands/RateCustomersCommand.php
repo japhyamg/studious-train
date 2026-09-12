@@ -39,10 +39,7 @@ class RateCustomersCommand extends Command
                 $level = mapScoreToRiskLevel($result->score);
                 if (!$level) continue;
 
-                $customer->update([
-                    'current_risk_level' => $level->label,
-                    'current_risk_score' => $result->score,
-                ]);
+                $customer->applyRiskLevel($level->label, $result->score, 'scheduled_rating');
                 $customer->scheduleNextReview();
             }
 

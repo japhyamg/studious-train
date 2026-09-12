@@ -54,7 +54,10 @@
         <div class="card">
             <div class="card-header">
                 <span>Configured Risk Levels</span>
-                <a href="{{ route('risk-rating.reviews-due') }}" class="btn btn-sm btn-outline-primary" style="font-size:11px"><i class="bi bi-calendar-check me-1"></i>View Reviews Due</a>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('risk-rating.risk-level-changes.export') }}" class="btn btn-sm btn-outline-success" style="font-size:11px"><i class="bi bi-download me-1"></i>Risk Level Changes</a>
+                    <a href="{{ route('risk-rating.reviews-due') }}" class="btn btn-sm btn-outline-primary" style="font-size:11px"><i class="bi bi-calendar-check me-1"></i>View Reviews Due</a>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive"><table class="table table-hover mb-0">

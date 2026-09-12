@@ -155,10 +155,7 @@ class CronJobController extends Controller
                 if ($customer) {
                     $riskLevel = mapScoreToRiskLevel($result->score);
                     if ($riskLevel) {
-                        $customer->update([
-                            'current_risk_level' => $riskLevel->label,
-                            'current_risk_score' => $result->score,
-                        ]);
+                        $customer->applyRiskLevel($riskLevel->label, $result->score, 'scheduled_rating');
                         $customer->scheduleNextReview();
                     }
                 }

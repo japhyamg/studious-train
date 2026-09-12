@@ -120,19 +120,63 @@ class Customer extends Model
 
     /**
      * Set review schedule based on risk level
+     *
+     * @param bool $fromNow When true, schedule from now (event-driven review);
+     *                      otherwise from onboarding / last review (periodic).
      */
-    public function scheduleNextReview(): void
+    public function scheduleNextReview(bool $fromNow = false): void
     {
         if (!$this->current_risk_level) return;
 
         $riskLevel = RiskLevel::where('label', $this->current_risk_level)->first();
         if (!$riskLevel || !$riskLevel->review_schedule_days) return;
 
-        $fromDate = $this->last_reviewed_at ?? $this->date_onboarded ?? $this->created_at;
+        $fromDate = $fromNow
+            ? now()
+            : ($this->last_reviewed_at ?? $this->date_onboarded ?? $this->created_at);
+
         $this->update([
             'next_review_date' => $riskLevel->calculateNextReviewDate($fromDate),
             'review_status' => 'pending',
         ]);
+    }
+
+    /**
+     * Apply a risk level and record a change in the append-only history when
+     * the classification changes (CBN 5.4(a)(v) + 5.2(a)(ii)).
+     *
+     * When the level changes, an event-driven CDD/EDD review is scheduled from
+     * now, in addition to the periodic review cadence.
+     */
+    public function applyRiskLevel(?string $level, float $score, string $driver = 'risk_rating'): void
+    {
+        $previousLevel = $this->current_risk_level;
+
+        $this->update([
+            'current_risk_level' => $level,
+            'current_risk_score' => $score,
+        ]);
+
+        if ($previousLevel !== $level) {
+            RiskLevelChange::create([
+                'customer_id' => $this->id,
+                'from_level' => $previousLevel,
+                'to_level' => $level,
+                'score' => $score,
+                'driver' => $driver,
+            ]);
+
+            activity()->performedOn($this)->withProperties([
+                'from_level' => $previousLevel,
+                'to_level' => $level,
+                'score' => $score,
+                'driver' => $driver,
+            ])->log("Risk level changed from {$previousLevel} to {$level}");
+
+            // Event-driven review: a risk-category change reschedules the
+            // customer's CDD/EDD review from the date of the change.
+            $this->scheduleNextReview(fromNow: true);
+        }
     }
 
     /**
