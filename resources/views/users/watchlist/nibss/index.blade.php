@@ -93,10 +93,11 @@
                 <input type="file" name="file" class="form-control form-control-sm" accept=".csv,.xlsx,.xls" required>
                 <div class="form-text" style="font-size:10px">
                     Accepts CSV or Excel. Header-aware — e.g. columns
-                    <code>BVN, FIRST NAME, MIDDLE NAME, SURNAME, CATEGORY, REASON,
-                    REQUESTING BANK, WATCHLISTED DATE</code>. Multi-sheet workbooks
-                    ("Watchlisted BVN", "Delisted BVN", "Deceased BVN") are imported
-                    with the matching status and title rows are skipped automatically.
+                    <code>BVN, REQUESTING BANK, FIRST NAME, MIDDLE NAME, SURNAME,
+                    CATEGORY, WATCHLISTED DATE</code> (REASON is optional).
+                    Multi-sheet workbooks ("Watchlisted BVN", "Delisted BVN",
+                    "Deceased BVN") are imported with the matching status and
+                    title rows are skipped automatically.
                 </div>
             </div>
         </div>

@@ -227,6 +227,10 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   columns), so title/meta rows above it — e.g. the title row and header row of
   a `BVN, NIN, FIRST NAME, MIDDLE NAME, SURNAME, ACCOUNT NO` sheet — are
   skipped automatically.
+- **Internal columns**: `BVN, NIN, FIRST NAME, MIDDLE NAME, SURNAME, ACCOUNT NO`.
+- **NIBSS columns**: `BVN, REQUESTING BANK, FIRST NAME, MIDDLE NAME, SURNAME,
+  CATEGORY, WATCHLISTED DATE` (REASON optional). `watchlisted_date` is
+  normalised to `Y-m-d` (Excel serials + d/m/Y, m/d/Y, d-m-Y, … layouts).
 - Both watchlist tables now show a **Status** badge (watchlisted/delisted/
   deceased).
 

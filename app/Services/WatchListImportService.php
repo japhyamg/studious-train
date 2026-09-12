@@ -115,6 +115,7 @@ class WatchListImportService
                     continue;
                 }
 
+                $data['watchlisted_date'] = $this->normalizeDate($data['watchlisted_date'] ?? null);
                 if (empty($data['watchlisted_date'])) {
                     $data['watchlisted_date'] = now()->toDateString();
                 }
@@ -166,6 +167,34 @@ class WatchListImportService
         if (str_contains($title, 'deceas')) return 'deceased';
 
         return 'watchlisted';
+    }
+
+    /**
+     * Normalise a watchlisted-date cell to MySQL's Y-m-d. Handles Excel serial
+     * numbers and common date layouts (d/m/Y, m/d/Y, d-m-Y, Y-m-d, …). Returns
+     * the original value when it cannot be parsed.
+     */
+    private function normalizeDate(?string $value): ?string
+    {
+        if ($value === null) return null;
+
+        $value = trim($value);
+        if ($value === '') return null;
+
+        // Excel serial date (days since 1899-12-30) when the cell is unformatted.
+        if (is_numeric($value) && (float) $value > 1 && (float) $value < 100000) {
+            return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $value)->format('Y-m-d');
+        }
+
+        foreach (['Y-m-d', 'd/m/Y', 'm/d/Y', 'd-m-Y', 'm-d-Y', 'd.m.Y', 'Y/m/d'] as $format) {
+            try {
+                return \Carbon\Carbon::createFromFormat($format, $value)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                // try the next format
+            }
+        }
+
+        return $value;
     }
 
     /**
