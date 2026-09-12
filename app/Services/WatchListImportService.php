@@ -2,66 +2,69 @@
 
 namespace App\Services;
 
-use App\Imports\SheetToArray;
 use App\Models\InternalWatchList;
 use App\Models\NibssWatchList;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
-use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class WatchListImportService
 {
     /**
      * Import internal watchlist entries from a CSV/XLSX file.
      *
-     * Header-aware with positional fallback.
+     * Handles workbooks with multiple sheets (e.g. "Watchlisted BVN",
+     * "Delisted BVN", "Deceased BVN"), skipping any title/meta rows that
+     * precede the real column header.
      */
     public function importInternal(UploadedFile $file): array
     {
-        $rows = $this->readRows($file);
-        if (empty($rows)) {
+        $sheets = $this->readSheets($file);
+        if ($sheets === []) {
             return ['created' => 0, 'skipped' => 0, 'errors' => 0, 'message' => 'File is empty.'];
         }
 
         $aliases = [
+            'bvn'         => ['bvn', 'bankverificationnumber'],
+            'nin'         => ['nin', 'nationalid', 'nationalidentitynumber'],
             'first_name'  => ['firstname', 'givenname', 'forename'],
             'middle_name' => ['middlename', 'othernames', 'othername'],
             'last_name'   => ['lastname', 'surname', 'familyname'],
             'account_no'  => ['accountno', 'accountnumber', 'account'],
-            'bvn'         => ['bvn', 'bankverificationnumber'],
-            'nin'         => ['nin', 'nationalid', 'nationalidentitynumber'],
         ];
-        $positional = ['first_name', 'middle_name', 'last_name', 'account_no', 'bvn', 'nin'];
-
-        $headerMap = $this->detectHeader($rows[0] ?? [], $aliases);
-        $dataRows  = $headerMap ? array_slice($rows, 1) : $rows;
+        // Matches the NIBSS BVN workbook column order.
+        $positional = ['bvn', 'nin', 'first_name', 'middle_name', 'last_name', 'account_no'];
 
         $stats = ['created' => 0, 'skipped' => 0, 'errors' => 0];
 
-        foreach ($dataRows as $row) {
-            $data = $headerMap
-                ? $this->mapRow($row, $headerMap)
-                : $this->positionalRow($row, $positional);
+        foreach ($sheets as $sheet) {
+            $status = $this->statusFromTitle($sheet['title']);
+            $header = $this->findHeader($sheet['rows'], $aliases);
+            $dataRows = $header ? array_slice($sheet['rows'], $header['index'] + 1) : $sheet['rows'];
+            $map = $header['map'] ?? null;
 
-            $data = $this->clean($data);
+            foreach ($dataRows as $row) {
+                $data = $map ? $this->mapRow($row, $map) : $this->positionalRow($row, $positional);
+                $data = $this->clean($data);
 
-            if (empty(array_filter($data))) {
-                $stats['skipped']++;
-                continue;
-            }
+                if (empty(array_filter($data))) {
+                    $stats['skipped']++;
+                    continue;
+                }
 
-            // Require at least a name or an identifier.
-            if (!$this->hasAny($data, ['first_name', 'last_name', 'account_no', 'bvn', 'nin'])) {
-                $stats['skipped']++;
-                continue;
-            }
+                // Require at least a name or an identifier.
+                if (!$this->hasAny($data, ['first_name', 'last_name', 'account_no', 'bvn', 'nin'])) {
+                    $stats['skipped']++;
+                    continue;
+                }
 
-            try {
-                InternalWatchList::create(array_merge(['status' => 'watchlisted'], $data));
-                $stats['created']++;
-            } catch (\Throwable $e) {
-                $stats['errors']++;
-                Log::warning('Internal watchlist import row error: ' . $e->getMessage());
+                try {
+                    InternalWatchList::create(array_merge(['status' => $status], $data));
+                    $stats['created']++;
+                } catch (\Throwable $e) {
+                    $stats['errors']++;
+                    Log::warning('Internal watchlist import row error: ' . $e->getMessage());
+                }
             }
         }
 
@@ -73,8 +76,8 @@ class WatchListImportService
      */
     public function importNibss(UploadedFile $file): array
     {
-        $rows = $this->readRows($file);
-        if (empty($rows)) {
+        $sheets = $this->readSheets($file);
+        if ($sheets === []) {
             return ['created' => 0, 'skipped' => 0, 'errors' => 0, 'message' => 'File is empty.'];
         }
 
@@ -90,38 +93,39 @@ class WatchListImportService
         ];
         $positional = ['bvn', 'first_name', 'middle_name', 'last_name', 'category', 'reason', 'requesting_bank', 'watchlisted_date'];
 
-        $headerMap = $this->detectHeader($rows[0] ?? [], $aliases);
-        $dataRows  = $headerMap ? array_slice($rows, 1) : $rows;
-
         $stats = ['created' => 0, 'skipped' => 0, 'errors' => 0];
 
-        foreach ($dataRows as $row) {
-            $data = $headerMap
-                ? $this->mapRow($row, $headerMap)
-                : $this->positionalRow($row, $positional);
+        foreach ($sheets as $sheet) {
+            $status = $this->statusFromTitle($sheet['title']);
+            $header = $this->findHeader($sheet['rows'], $aliases);
+            $dataRows = $header ? array_slice($sheet['rows'], $header['index'] + 1) : $sheet['rows'];
+            $map = $header['map'] ?? null;
 
-            $data = $this->clean($data);
+            foreach ($dataRows as $row) {
+                $data = $map ? $this->mapRow($row, $map) : $this->positionalRow($row, $positional);
+                $data = $this->clean($data);
 
-            if (empty(array_filter($data))) {
-                $stats['skipped']++;
-                continue;
-            }
+                if (empty(array_filter($data))) {
+                    $stats['skipped']++;
+                    continue;
+                }
 
-            if (!$this->hasAny($data, ['bvn', 'first_name', 'last_name'])) {
-                $stats['skipped']++;
-                continue;
-            }
+                if (!$this->hasAny($data, ['bvn', 'first_name', 'last_name'])) {
+                    $stats['skipped']++;
+                    continue;
+                }
 
-            if (empty($data['watchlisted_date'])) {
-                $data['watchlisted_date'] = now()->toDateString();
-            }
+                if (empty($data['watchlisted_date'])) {
+                    $data['watchlisted_date'] = now()->toDateString();
+                }
 
-            try {
-                NibssWatchList::create(array_merge(['status' => 'watchlisted'], $data));
-                $stats['created']++;
-            } catch (\Throwable $e) {
-                $stats['errors']++;
-                Log::warning('NIBSS watchlist import row error: ' . $e->getMessage());
+                try {
+                    NibssWatchList::create(array_merge(['status' => $status], $data));
+                    $stats['created']++;
+                } catch (\Throwable $e) {
+                    $stats['errors']++;
+                    Log::warning('NIBSS watchlist import row error: ' . $e->getMessage());
+                }
             }
         }
 
@@ -130,35 +134,79 @@ class WatchListImportService
 
     // ─── Helpers ─────────────────────────────────────────────────
 
-    private function readRows(UploadedFile $file): array
+    /**
+     * Load every worksheet (with its title) as a plain 2D array of rows.
+     */
+    private function readSheets(UploadedFile $file): array
     {
-        $sheets = Excel::toArray(new SheetToArray(), $file);
-        return $sheets[0] ?? [];
+        $path = $file->getRealPath() ?: $file->getPathname();
+
+        $spreadsheet = IOFactory::load($path);
+        $sheets = [];
+
+        foreach ($spreadsheet->getAllSheets() as $worksheet) {
+            $sheets[] = [
+                'title' => (string) $worksheet->getTitle(),
+                'rows'  => $worksheet->toArray(null, true, true, false),
+            ];
+        }
+
+        return $sheets;
     }
 
     /**
-     * Detect a header row and return a map of column index → field name,
-     * or null when no header is recognised (caller falls back to positional).
+     * Map a sheet title to a watchlist status. Sheets like "Delisted BVN" and
+     * "Deceased BVN" are imported with their matching status.
      */
-    private function detectHeader(array $firstRow, array $aliases): ?array
+    private function statusFromTitle(string $title): string
+    {
+        $title = strtolower($title);
+
+        if (str_contains($title, 'delist')) return 'delisted';
+        if (str_contains($title, 'deceas')) return 'deceased';
+
+        return 'watchlisted';
+    }
+
+    /**
+     * Scan the leading rows of a sheet for the column header, so title/meta
+     * rows above it are skipped. Returns ['index' => int, 'map' => array] or
+     * null when no header is recognised (caller falls back to positional).
+     */
+    private function findHeader(array $rows, array $aliases, int $maxScan = 10): ?array
+    {
+        foreach ($rows as $index => $row) {
+            if ($index >= $maxScan) break;
+
+            $map = $this->detectHeader($row, $aliases);
+            if (count($map) >= 2) {
+                return ['index' => $index, 'map' => $map];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Detect a header row and return a map of column index → field name.
+     */
+    private function detectHeader(array $row, array $aliases): array
     {
         $map = [];
-        $found = false;
 
-        foreach ($firstRow as $colIndex => $cell) {
+        foreach ($row as $colIndex => $cell) {
             $norm = $this->normalize((string) $cell);
             if ($norm === '') continue;
 
             foreach ($aliases as $field => $names) {
                 if (in_array($norm, $names, true)) {
                     $map[$colIndex] = $field;
-                    $found = true;
                     break;
                 }
             }
         }
 
-        return $found ? $map : null;
+        return $map;
     }
 
     private function mapRow(array $row, array $headerMap): array

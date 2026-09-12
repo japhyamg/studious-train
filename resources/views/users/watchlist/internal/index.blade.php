@@ -24,7 +24,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive"><table class="table table-hover mb-0">
-            <thead><tr><th>Name</th><th>Account No</th><th>BVN</th><th>NIN</th><th>Added</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Name</th><th>Account No</th><th>BVN</th><th>NIN</th><th>Status</th><th>Added</th><th>Actions</th></tr></thead>
             <tbody>
                 @forelse($watchlist as $w)
                 <tr>
@@ -32,6 +32,7 @@
                     <td class="font-monospace" style="font-size:12px">{{ $w->account_no ?? '—' }}</td>
                     <td style="font-size:12px;color:var(--text-muted)">{{ $w->bvn ?? '—' }}</td>
                     <td style="font-size:12px;color:var(--text-muted)">{{ $w->nin ?? '—' }}</td>
+                    <td>@php $st = strtolower($w->status ?? 'watchlisted'); $stc = $st === 'delisted' ? 'bg-secondary' : ($st === 'deceased' ? 'bg-dark' : 'bg-success'); @endphp<span class="badge {{ $stc }}" style="font-size:10px">{{ ucfirst($st) }}</span></td>
                     <td style="font-size:12px;color:var(--text-muted)">{{ $w->created_at->format('M d, Y') }}</td>
                     <td>
                         <div class="d-flex gap-1">
@@ -44,7 +45,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         <div class="empty-state">
                             <div class="empty-state-icon"><i class="bi bi-exclamation-diamond"></i></div>
                             <div class="empty-state-title">No entries</div>
@@ -91,8 +92,11 @@
                 <label class="form-label">File *</label>
                 <input type="file" name="file" class="form-control form-control-sm" accept=".csv,.xlsx,.xls" required>
                 <div class="form-text" style="font-size:10px">
-                    Columns: first_name, middle_name, last_name, account_no, bvn, nin — or positional order
-                    (first name, middle name, last name, account no, BVN, NIN).
+                    Accepts CSV or Excel. Header-aware — e.g. columns
+                    <code>BVN, NIN, FIRST NAME, MIDDLE NAME, SURNAME, ACCOUNT NO</code>.
+                    Workbooks with multiple sheets ("Watchlisted BVN", "Delisted BVN",
+                    "Deceased BVN") are imported with the matching status; any title rows
+                    above the header are skipped automatically.
                 </div>
             </div>
         </div>

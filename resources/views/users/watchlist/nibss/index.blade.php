@@ -23,7 +23,7 @@
         </div>
     </div>
     <div class="card-body p-0"><div class="table-responsive"><table class="table table-hover mb-0">
-        <thead><tr><th>Name</th><th>BVN</th><th>Category</th><th>Reason</th><th>Bank</th><th>Date</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>BVN</th><th>Category</th><th>Reason</th><th>Bank</th><th>Date</th><th>Status</th><th></th></tr></thead>
         <tbody>
             @forelse($watchlist as $w)
             <tr>
@@ -33,11 +33,12 @@
                 <td style="font-size:12px;color:var(--text-muted);max-width:200px" class="text-truncate">{{ $w->reason ?? '—' }}</td>
                 <td style="font-size:12px">{{ $w->requesting_bank ?? '—' }}</td>
                 <td style="font-size:12px;color:var(--text-muted)">{{ $w->watchlisted_date ?? $w->created_at->format('M d, Y') }}</td>
+                <td>@php $st = strtolower($w->status ?? 'watchlisted'); $stc = $st === 'delisted' ? 'bg-secondary' : ($st === 'deceased' ? 'bg-dark' : 'bg-success'); @endphp<span class="badge {{ $stc }}" style="font-size:10px">{{ ucfirst($st) }}</span></td>
                 <td><button class="btn btn-outline-danger btn-action" onclick="deleteNibss({{ $w->id }})"><i class="bi bi-trash"></i></button></td>
             </tr>
             @empty
             <tr>
-                <td colspan="7">
+                <td colspan="8">
                     <div class="empty-state">
                         <div class="empty-state-icon"><i class="bi bi-shield-exclamation"></i></div>
                         <div class="empty-state-title">No entries</div>
@@ -91,7 +92,11 @@
                 <label class="form-label">File *</label>
                 <input type="file" name="file" class="form-control form-control-sm" accept=".csv,.xlsx,.xls" required>
                 <div class="form-text" style="font-size:10px">
-                    Columns: bvn, first_name, middle_name, last_name, category, reason, requesting_bank, watchlisted_date — or positional order.
+                    Accepts CSV or Excel. Header-aware — e.g. columns
+                    <code>BVN, FIRST NAME, MIDDLE NAME, SURNAME, CATEGORY, REASON,
+                    REQUESTING BANK, WATCHLISTED DATE</code>. Multi-sheet workbooks
+                    ("Watchlisted BVN", "Delisted BVN", "Deceased BVN") are imported
+                    with the matching status and title rows are skipped automatically.
                 </div>
             </div>
         </div>

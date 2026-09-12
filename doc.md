@@ -218,6 +218,18 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   files as `application/zip`/`application/octet-stream` and rejected valid
   uploads).
 
+**Multi-sheet NIBSS BVN workbooks**
+- The importer now reads **every worksheet** (via PhpSpreadsheet, which exposes
+  sheet titles) instead of only the first sheet.
+- Sheet title → status: `…Watchlisted…` → `watchlisted`, `…Delisted…` →
+  `delisted`, `…Deceased…` → `deceased`.
+- The column header is **located by scanning the first rows** (≥2 recognised
+  columns), so title/meta rows above it — e.g. the title row and header row of
+  a `BVN, NIN, FIRST NAME, MIDDLE NAME, SURNAME, ACCOUNT NO` sheet — are
+  skipped automatically.
+- Both watchlist tables now show a **Status** badge (watchlisted/delisted/
+  deceased).
+
 **UI**
 - "Add Entry" and "Upload CSV/Excel" are now **modals**; the watchlist is a
   **full-width table** (for both internal and NIBSS pages).
