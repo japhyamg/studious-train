@@ -173,6 +173,33 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   the risk breakdown in `transaction_risks.meta.score_breakdown` includes the
   factor.
 
+### 2.7 Phase 2 — Customer 360 single view (commit `415e691`)
+
+**Watchlist status label (CBN 5.3(a)(v))**
+- Migration `...000003...` adds a `status` column (default `watchlisted`) to
+  `internal_watch_lists` and `nibss_watch_lists`, so entries can be marked
+  `delisted`.
+- `Customer::watchlistStatus()` resolves the customer's standing across both
+  lists (internal by account/BVN/NIN/name; NIBSS by BVN/name).
+- The customer page header now shows badges: **Internal Watchlist**,
+  **NIBSS Watchlisted** (red) or **NIBSS Delisted** (grey).
+- **Test:** add a customer's BVN to the NIBSS list → open their profile → red
+  "NIBSS Watchlisted" badge; set the entry `status=delisted` → grey "NIBSS
+  Delisted" badge.
+
+**Global search + export (CBN 5.9(a)(vi)/(vii))**
+- New `customers/search` route: enter name/account/BVN/NIN and it resolves to
+  the best-matching customer's 360 view (falls back to the filtered list).
+- **CSV** and **PDF** buttons on the customer page export the full 360 record
+  (identity, KYC/KYB, PEP, risk, credit/debit totals, STR/CTR, watchlist
+  status, review date, risk-change history).
+- **Risk-level change history** now renders on the profile (from Phase 1's
+  `risk_level_changes`).
+
+**Test**
+- Customer page → search bar → type a BVN → lands on that customer's 360.
+- Click CSV (downloads) and PDF (downloads, portrait A4).
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -255,7 +282,7 @@ php artisan risk:rate
 - ✅ **Quick win 2** — export buttons on CARRD / case-performance /
   false-positive dashboards.
 - ✅ **Phase 1** — risk-level change history + event-driven reviews.
-- ⬜ **Phase 2** — Customer 360 single view (search + PDF/CSV export).
+- ✅ **Phase 2** — Customer 360 single view (search + PDF/CSV export).
 - ⬜ **Phase 3** — screening as a service (nightly PAS, list-update logs,
   fuzzy matching, PEP auto-flag).
 - ⬜ **Phase 4** — pre-emptive alert engine + multi-condition TTR scoring.
