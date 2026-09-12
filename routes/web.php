@@ -94,7 +94,9 @@ Route::middleware(['auth'])->group(function () {
     /*--- Customers ---*/
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', [CustomerDetailsController::class, 'index'])->name('all');
+        Route::get('/search', [CustomerDetailsController::class, 'search'])->name('search');
         Route::get('/show/{id}', [CustomerDetailsController::class, 'show'])->name('show');
+        Route::get('/show/{id}/export', [CustomerDetailsController::class, 'export360'])->name('show.export');
         Route::get('/ajax-show', [CustomerDetailsController::class, 'ajaxshow'])->name('ajax-show');
         Route::get('/create', [CustomerDetailsController::class, 'create'])->name('create');
         Route::post('/store', [CustomerDetailsController::class, 'store'])->name('store');

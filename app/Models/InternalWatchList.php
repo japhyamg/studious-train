@@ -8,7 +8,7 @@ class InternalWatchList extends Model
 {
     protected $fillable = [
         'first_name', 'middle_name', 'last_name',
-        'account_no', 'bvn', 'nin',
+        'account_no', 'bvn', 'nin', 'status',
     ];
 
     public function getNameAttribute(): string

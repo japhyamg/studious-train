@@ -98,6 +98,41 @@ class Customer extends Model
     }
 
     /**
+     * Resolve this customer's watchlist standing across internal and NIBSS
+     * lists (CBN 5.3(a)(v) — the customer view must show whether the customer
+     * is watchlisted or delisted).
+     *
+     * Matching: internal list by account/BVN/NIN/name; NIBSS by BVN/name.
+     */
+    public function watchlistStatus(): array
+    {
+        $internal = InternalWatchList::where(function ($q) {
+            $q->where('account_no', $this->account_number)
+              ->orWhere('bvn', $this->bvn)
+              ->orWhere('nin', $this->nin);
+        })
+        ->where('status', '!=', 'delisted')
+        ->first();
+
+        $nibss = NibssWatchList::where(function ($q) {
+            $q->where('bvn', $this->bvn);
+            if ($this->last_name) {
+                $q->orWhere(function ($qq) {
+                    $qq->where('first_name', $this->first_name)
+                       ->where('last_name', $this->last_name);
+                });
+            }
+        })->latest()->first();
+
+        return [
+            'internal' => $internal ? 'watchlisted' : null,
+            'nibss' => $nibss ? ($nibss->status ?? 'watchlisted') : null,
+            'nibss_reason' => $nibss?->reason,
+            'nibss_category' => $nibss?->category,
+        ];
+    }
+
+    /**
      * Check if customer review is due or overdue
      */
     public function isReviewDue(): bool

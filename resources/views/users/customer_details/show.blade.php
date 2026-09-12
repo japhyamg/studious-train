@@ -19,6 +19,23 @@
 @section('content')
 <a href="{{ route('customers.all') }}" class="back-link"><i class="bi bi-arrow-left"></i> Back to Customers</a>
 
+{{-- Global customer search + export (CBN 5.9(a)(vi)) --}}
+<div class="card mb-3">
+    <div class="card-body py-3 d-flex flex-wrap gap-3 align-items-center justify-content-between">
+        <form method="GET" action="{{ route('customers.search') }}" class="d-flex gap-2" style="flex:1;min-width:260px">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text" style="background:#faf8f2;border-color:var(--border)"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Search any customer — name, account, BVN, NIN…" required>
+            </div>
+            <button class="btn btn-primary btn-sm">Find</button>
+        </form>
+        <div class="d-flex gap-2">
+            <a href="{{ route('customers.show.export', ['id' => $customer->id, 'format' => 'csv']) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i> CSV</a>
+            <a href="{{ route('customers.show.export', ['id' => $customer->id, 'format' => 'pdf']) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
+        </div>
+    </div>
+</div>
+
 {{-- Customer Header --}}
 <div class="card mb-4">
     <div class="card-body">
@@ -33,6 +50,17 @@
                     <span class="badge" style="background:#fef2f2;color:#dc2626;font-size:10px;border:1px solid #fecaca">PEP</span>
                     @endif
                     <span class="badge" style="background:#faf8f2;color:var(--text-secondary);font-size:10px;border:1px solid var(--border-light)">{{ ucfirst($customer->customer_type ?? '—') }}</span>
+                    {{-- Watchlist standing (CBN 5.3(a)(v)) --}}
+                    @if(!empty($watchlist['internal']))
+                    <span class="badge" style="background:#fef2f2;color:#dc2626;font-size:10px;border:1px solid #fecaca"><i class="bi bi-shield-exclamation me-1"></i>Internal Watchlist</span>
+                    @endif
+                    @if(!empty($watchlist['nibss']))
+                        @if($watchlist['nibss'] === 'delisted')
+                        <span class="badge" style="background:#f1f0ee;color:#6b6860;font-size:10px;border:1px solid #e4e3e0"><i class="bi bi-shield-check me-1"></i>NIBSS Delisted</span>
+                        @else
+                        <span class="badge" style="background:#fef2f2;color:#dc2626;font-size:10px;border:1px solid #fecaca"><i class="bi bi-shield-exclamation me-1"></i>NIBSS Watchlisted</span>
+                        @endif
+                    @endif
                 </div>
             </div>
         </div>
@@ -171,6 +199,21 @@
                     <span style="color:var(--text-muted)">Total Cases</span>
                     <span class="fw-bold">{{ $totalCases }}</span>
                 </div>
+
+                {{-- Risk Level Change History (CBN 5.4(a)(v)) --}}
+                @if($riskChanges->isNotEmpty())
+                <div class="mt-3">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px">Risk Level Changes</div>
+                    @foreach($riskChanges as $change)
+                    <div class="d-flex align-items-center gap-2 py-1" style="font-size:12px;border-bottom:1px dashed var(--border-light)">
+                        <span class="badge" style="background:#faf8f2;color:var(--text-secondary);border:1px solid var(--border-light);font-size:10px">{{ ucfirst($change->from_level ?? '—') }}</span>
+                        <i class="bi bi-arrow-right" style="font-size:10px;color:var(--text-muted)"></i>
+                        <span class="badge" style="background:{{ $riskColors[strtolower($change->to_level ?? '')][0] ?? '#faf8f2' }};color:{{ $riskColors[strtolower($change->to_level ?? '')][1] ?? '#94a3b8' }};border:1px solid {{ $riskColors[strtolower($change->to_level ?? '')][2] ?? '#e4e8f0' }};font-size:10px">{{ ucfirst($change->to_level ?? '—') }}</span>
+                        <span style="color:var(--text-muted);font-size:10px">{{ $change->created_at?->format('M d, Y') }} · score {{ $change->score }} · {{ str_replace('_', ' ', $change->driver) }}</span>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
 
                 @if($customer->next_review_date)
                 <div class="mt-3 p-3 rounded-3 d-flex align-items-center gap-2" style="background:{{ $customer->review_status === 'overdue' ? '#fef2f2' : 'var(--green-50)' }};border:1px solid {{ $customer->review_status === 'overdue' ? '#fecaca' : 'var(--green-100)' }};font-size:12px">
