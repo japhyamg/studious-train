@@ -138,6 +138,41 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
 - **Test:** open each dashboard → click CSV (downloads) and PDF (downloads,
   landscape A4 via DomPDF).
 
+### 2.6 Risk scoring config — modal + behaviour checks (commit `3927a52`)
+
+**UI (`/transactions/risk-scoring-config`)**
+- "Add Risk Factor" is now a **modal** (previously an inline side card); the
+  Risk Scoring Factors table is now **full width**.
+- Edit modal upgraded to match (factor name read-only, window days field).
+
+**New "Behaviour / Derived" check type**
+- `TransactionRiskScoringService` now computes behavioural aggregates over a
+  configurable look-back window (`window_days`, default 7). Previously only raw
+  `transaction`/`customer` columns were available, so checks like "count of
+  transactions a customer makes" were impossible.
+- New behaviour fields:
+  - `transaction_count` — transaction frequency (high_frequency_transaction)
+  - `debit_count` / `credit_count` — outgoing/incoming transaction counts
+  - `debit_value` / `credit_value` — total outflow/inflow (₦)
+  - `str_count` / `ctr_count` — prior STR/CTR cases for the account
+  - `pep_receipt_count` — incoming transfers from PEP accounts
+  - `midnight_transaction_count` — transactions 23:00–04:00
+  - `same_sender_count` — max repeat from a single sender
+  - `distinct_sender_count` — number of distinct senders
+- Added missing transaction fields (NIN/BVN) and customer fields (occupation,
+  source of funds, income range, business activity, employer name, LGA, risk
+  score) to the dropdowns.
+
+**Test**
+- Open `/transactions/risk-scoring-config` → **Add Risk Factor** → set
+  "Checks Against" = Behaviour / Derived → confirm the field list includes
+  "Transaction Count (High Frequency)" and a "Window (days)" input appears.
+- Create `HIGH_FREQUENCY_TRANSACTION` (≥ 20 in 7 days, weight 15) and confirm
+  it shows in the full-width table with "(last 7d)".
+- Send a transaction for a customer with ≥ 20 transactions in 7 days and check
+  the risk breakdown in `transaction_risks.meta.score_breakdown` includes the
+  factor.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
