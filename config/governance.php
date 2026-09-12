@@ -34,11 +34,13 @@ return [
     ],
 
     // ── 5.4 CTR detection (cash transaction reports) ───────────────────
+    // The per-type amount thresholds (individual vs corporate) are driven by
+    // the risk-scoring factors TRANSACTION_AMOUNT and TRANSACTION_AMOUNT_CORPORATE
+    // (see Risk Scoring page) — one amount factor per customer type. Only the
+    // operational cash parameters live here.
     'ctr' => [
-        'threshold_individual' => 5000000,    // ₦5,000,000 per day (individual)
-        'threshold_corporate'  => 10000000,   // ₦10,000,000 per day (corporate)
-        'cash_channels'        => ['atm', 'bank', 'cash'],
-        'window_days'          => 1,
+        'cash_channels' => ['atm', 'bank', 'cash'],
+        'window_days'  => 1,
     ],
 
     // ── 5.4 STR filing SLA (days from case creation) ───────────────────

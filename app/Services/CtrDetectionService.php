@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Customer;
 use App\Models\FlaggedCase;
+use App\Models\RiskScoringConfig;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Log;
 
@@ -11,16 +12,19 @@ use Illuminate\Support\Facades\Log;
  * Cash Transaction Report (CTR) detection — CBN 5.8(a)(i).
  *
  * Aggregates cash-channel transactions per account over a rolling window and
- * raises a CTR case when an account's cash volume crosses the threshold
- * (individual vs corporate, both configurable). One CTR case per account per
- * window.
+ * raises a CTR case when an account's cash volume crosses the threshold for
+ * its customer type. The individual/corporate thresholds are read from the
+ * risk-scoring factors TRANSACTION_AMOUNT and TRANSACTION_AMOUNT_CORPORATE
+ * (one amount factor per customer type), so they are configured in the Risk
+ * Scoring page rather than a separate CTR config.
  */
 class CtrDetectionService
 {
     public function detect(): array
     {
-        $individual = (float) settings('ctr_threshold_individual', config('governance.ctr.threshold_individual', 5000000));
-        $corporate  = (float) settings('ctr_threshold_corporate', config('governance.ctr.threshold_corporate', 10000000));
+        $thresholds = $this->thresholds();
+        $individual = $thresholds['individual'];
+        $corporate  = $thresholds['corporate'];
         $channels   = $this->cashChannels();
         $windowDays = (int) settings('ctr_window_days', config('governance.ctr.window_days', 1));
         $since      = now()->subDays($windowDays);
@@ -91,6 +95,50 @@ class CtrDetectionService
             'already_flagged' => $skipped,
             'window_days' => $windowDays,
         ];
+    }
+
+    /**
+     * Resolve the individual and corporate CTR amount thresholds from the
+     * risk-scoring factor system (TRANSACTION_AMOUNT / TRANSACTION_AMOUNT_CORPORATE).
+     */
+    public function thresholds(): array
+    {
+        return [
+            'individual' => $this->factorThreshold('TRANSACTION_AMOUNT', 5000000),
+            'corporate'  => $this->factorThreshold('TRANSACTION_AMOUNT_CORPORATE', 10000000),
+        ];
+    }
+
+    /**
+     * Read the `amount` comparison value from an active risk factor, falling
+     * back to a sensible default when the factor is missing or disabled.
+     */
+    private function factorThreshold(string $factorName, float $fallback): float
+    {
+        $factor = RiskScoringConfig::where('factor_name', $factorName)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$factor) return $fallback;
+
+        $cond = is_array($factor->conditions)
+            ? $factor->conditions
+            : json_decode($factor->conditions, true);
+
+        if (!is_array($cond)) return $fallback;
+
+        // Legacy single-condition shape vs multi-condition shape.
+        $conditions = $cond['conditions'] ?? [$cond];
+
+        foreach ($conditions as $c) {
+            if (($c['check_type'] ?? 'transaction') === 'transaction'
+                && ($c['field'] ?? null) === 'amount'
+                && is_numeric($c['value'] ?? null)) {
+                return (float) $c['value'];
+            }
+        }
+
+        return $fallback;
     }
 
     private function cashChannels(): array

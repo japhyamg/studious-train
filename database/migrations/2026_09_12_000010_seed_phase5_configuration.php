@@ -24,14 +24,14 @@ return new class extends Migration
                 ->update(['case_tat_hours' => $hours]);
         }
 
-        // 5.4 / 5.5 — runtime settings (defaults, only create when missing)
+        // 5.4 / 5.5 — runtime settings (defaults, only create when missing).
+        // CTR amount thresholds are NOT seeded here — they live in the
+        // risk_scoring_configs factors TRANSACTION_AMOUNT[_CORPORATE].
         $settings = [
-            'ctr_threshold_individual' => (string) config('governance.ctr.threshold_individual', 5000000),
-            'ctr_threshold_corporate'  => (string) config('governance.ctr.threshold_corporate', 10000000),
-            'ctr_cash_channels'        => implode(',', config('governance.ctr.cash_channels', ['atm', 'bank', 'cash'])),
-            'str_filing_sla_days'      => (string) config('governance.filing.str_sla_days', 5),
-            'audit_retention_days'     => (string) config('governance.audit.retention_days', 1825),
-            'case_sla_enabled'         => config('governance.sla.enabled', true) ? 'true' : 'false',
+            'ctr_cash_channels'    => implode(',', config('governance.ctr.cash_channels', ['atm', 'bank', 'cash'])),
+            'str_filing_sla_days'  => (string) config('governance.filing.str_sla_days', 5),
+            'audit_retention_days' => (string) config('governance.audit.retention_days', 1825),
+            'case_sla_enabled'     => config('governance.sla.enabled', true) ? 'true' : 'false',
         ];
         foreach ($settings as $name => $value) {
             Setting::firstOrCreate(['name' => $name], ['value' => $value]);

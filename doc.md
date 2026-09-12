@@ -440,8 +440,12 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
 **What changed**
 - `CtrDetectionService` aggregates cash-channel transactions per account over
   the rolling window and raises a **CTR** case (new `SOURCE_CTR`) above the
-  individual/corporate threshold; wired into `/cron-job/generate-ctr` + the
-  Cron Jobs status card.
+  amount threshold for the account's customer type; wired into
+  `/cron-job/generate-ctr` + the Cron Jobs status card.
+- CTR amount thresholds are driven by the risk-scoring factors — individual
+  from `TRANSACTION_AMOUNT`, corporate from the new `TRANSACTION_AMOUNT_CORPORATE`
+  ("Corporate Transaction Amount > ₦10,000,000") — so they are edited on the
+  Risk Scoring page instead of a separate governance config.
 - Filing lifecycle on cases: `filing_status` (draft/filed), `filed_at/by`,
   `filing_reference`, a "Mark as filed" action (permission `case-file`) and a
   filing card on the case page.

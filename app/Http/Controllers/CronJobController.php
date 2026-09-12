@@ -365,14 +365,10 @@ class CronJobController extends Controller
             ],
             'generate_ctr' => [
                 'name' => 'CTR Detection & Generation',
-                'description' => 'Detects accounts whose cash volume crosses the threshold and raises CTR cases',
+                'description' => 'Detects accounts whose cash volume crosses the risk-factor amount threshold and raises CTR cases',
                 'frequency' => 'Daily',
                 'url' => route('cron-job.generate-ctr'),
-                'stats' => [
-                    'ctr_cases_today' => FlaggedCase::where('trigger_source', FlaggedCase::SOURCE_CTR)->whereDate('created_at', today())->count(),
-                    'individual_threshold' => moneyFormat((float) settings('ctr_threshold_individual', config('governance.ctr.threshold_individual', 5000000))),
-                    'corporate_threshold' => moneyFormat((float) settings('ctr_threshold_corporate', config('governance.ctr.threshold_corporate', 10000000))),
-                ],
+                'stats' => $this->ctrStats(),
             ],
             'customer_sync' => [
                 'name' => 'Customer Data Sync',
@@ -399,5 +395,21 @@ class CronJobController extends Controller
         ];
 
         return view('users.cron.status', compact('data'));
+    }
+
+    /**
+     * CTR detection stats for the Cron Jobs dashboard — thresholds resolved
+     * from the risk-scoring factors (TRANSACTION_AMOUNT[_CORPORATE]).
+     */
+    private function ctrStats(): array
+    {
+        $thresholds = (new \App\Services\CtrDetectionService())->thresholds();
+
+        return [
+            'ctr_cases_today' => FlaggedCase::where('trigger_source', FlaggedCase::SOURCE_CTR)
+                ->whereDate('created_at', today())->count(),
+            'individual_threshold' => moneyFormat($thresholds['individual']),
+            'corporate_threshold' => moneyFormat($thresholds['corporate']),
+        ];
     }
 }

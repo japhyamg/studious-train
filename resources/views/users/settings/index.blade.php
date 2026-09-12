@@ -179,31 +179,25 @@
             <div class="card-header"><span><i class="bi bi-shield-lock me-2"></i> Governance & Reporting</span></div>
             <div class="card-body">
                 <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:20px">
-                    CTR detection thresholds, STR filing SLA, audit retention, and the maker-checker disposition flow (CBN 5.7 / 5.8 / 5.9).
+                    STR filing SLA, audit retention, and the maker-checker disposition flow (CBN 5.7 / 5.8 / 5.9).
+                    CTR amount thresholds are managed on the <a href="{{ route('transactions.risk-scoring-config') }}">Risk Scoring</a> page
+                    (<code>TRANSACTION_AMOUNT</code> for individuals, <code>TRANSACTION_AMOUNT_CORPORATE</code> for corporates).
                 </p>
                 <form method="POST" action="{{ route('settings.governance') }}">
                     @csrf
                     <div class="row g-3">
                         <div class="col-md-3">
-                            <label class="form-label">CTR Threshold — Individual (₦)</label>
-                            <input type="number" name="ctr_threshold_individual" class="form-control form-control-sm" step="any" min="0" value="{{ settings('ctr_threshold_individual', config('governance.ctr.threshold_individual', 5000000)) }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">CTR Threshold — Corporate (₦)</label>
-                            <input type="number" name="ctr_threshold_corporate" class="form-control form-control-sm" step="any" min="0" value="{{ settings('ctr_threshold_corporate', config('governance.ctr.threshold_corporate', 10000000)) }}">
-                        </div>
-                        <div class="col-md-2">
                             <label class="form-label">STR Filing SLA (days)</label>
                             <input type="number" name="str_filing_sla_days" class="form-control form-control-sm" min="1" value="{{ settings('str_filing_sla_days', config('governance.filing.str_sla_days', 5)) }}">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-3">
                             <label class="form-label">Audit Retention (days)</label>
                             <input type="number" name="audit_retention_days" class="form-control form-control-sm" min="1" value="{{ settings('audit_retention_days', config('governance.audit.retention_days', 1825)) }}">
                         </div>
-                        <div class="col-md-2 d-flex align-items-end">
+                        <div class="col-md-3 d-flex align-items-end">
                             <div class="d-flex align-items-center gap-2 pb-2">
                                 <div class="form-check form-switch mb-0">
-                                    <input class="form-check-input" type="checkbox" role="switch" name="maker_checker_enabled" value="1" {{ settings('maker_checker_enabled', config('governance.maker_checker.enabled', true)) !== 'false' ? 'checked' : '' }}>
+                                    <input class="form-check-input" type="checkbox" role="switch" name="maker_checker_enabled" value="1" {{ settingBool('maker_checker_enabled', config('governance.maker_checker.enabled', true)) ? 'checked' : '' }}>
                                 </div>
                                 <span style="font-size:12.5px">Maker-checker</span>
                             </div>

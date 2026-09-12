@@ -54,15 +54,11 @@ class SettingsController extends Controller
     public function saveGovernanceSettings(Request $request)
     {
         $request->validate([
-            'ctr_threshold_individual' => 'nullable|numeric|min:0',
-            'ctr_threshold_corporate' => 'nullable|numeric|min:0',
             'str_filing_sla_days' => 'nullable|integer|min:1',
             'audit_retention_days' => 'nullable|integer|min:1',
         ]);
 
         $fields = [
-            'ctr_threshold_individual' => $request->ctr_threshold_individual,
-            'ctr_threshold_corporate' => $request->ctr_threshold_corporate,
             'str_filing_sla_days' => $request->str_filing_sla_days,
             'audit_retention_days' => $request->audit_retention_days,
             'maker_checker_enabled' => $request->boolean('maker_checker_enabled') ? 'true' : 'false',
