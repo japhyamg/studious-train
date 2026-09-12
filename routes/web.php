@@ -173,6 +173,7 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('peer-grouping')->name('peer-grouping.')->group(function () {
         Route::get('/', [PeerGroupAnalysisController::class, 'index'])->name('index');
         Route::post('/update-settings', [PeerGroupAnalysisController::class, 'updateSettings'])->name('update-settings');
+        Route::post('/recompute', [PeerGroupAnalysisController::class, 'recompute'])->name('recompute');
     });
 
     /*--- Tools ---*/

@@ -352,6 +352,30 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   satisfied.
 - A risk-scored case shows `TTR {score}` as its trigger label.
 
+### 2.14 Phase 4.3 — peer-group analysis completion
+
+**What was missing / fixed**
+- The peer-grouping page previously only showed a settings form. It now includes:
+  - **Outliers table** — every screened transaction with customer, group, amount,
+    threshold, amount-exceeded and an Outlier / Within-Range badge (paginated).
+  - **Current thresholds table** — per field and group: sample size, Q1, Q3,
+    IQR and the upper threshold (Tukey's fences), plus computed time.
+  - **Manual "Recompute Thresholds"** action (`POST /peer-grouping/recompute`).
+  - **Plain-language explainer** of the IQR method (what fields, how thresholds
+    are computed, how to read them) — CBN 5.5(a)(iii).
+- Robustness: peer-group fields are now validated against real customer columns
+  before being used in SQL; `pg_selected_fields` has a safe default; thresholds
+  are stored with full Q1/Q3/IQR detail (backward-compatible with legacy scalar
+  rows); the settings page handles clearing all selections.
+- Related-party / network analysis (graph of counterparties) is tracked as a
+  separate follow-up and not part of this completion.
+
+**Test**
+- Peer Groups → select fields → Save → "Recompute Thresholds" → thresholds
+  table populates per group.
+- Process a transaction above its group's upper threshold → an "Outlier" row
+  appears and a peer-group case is created.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -439,8 +463,8 @@ php artisan risk:rate
   3.2 fuzzy/scored matching; 3.3 nightly PAS; 3.4 PEP auto-flag; 3.5
   block/freeze flag — all done).
 - 🔶 **Phase 4** — pre-emptive alert engine + TTR scoring (4.2 multi-condition
-  factors + TTR-as-reason done; 4.1 pre-emptive alerts, 4.3 peer-group docs,
-  4.4 AI explainability pending).
+  factors + TTR-as-reason done; 4.3 peer-group completion done; 4.1 pre-emptive
+  alerts, 4.4 AI explainability pending).
 - ⬜ **Phase 5** — case SLA/TAT, maker-checker, CTR generation, audit
   retention + exports.
 - ⬜ **Phase 6** — API docs, encryption, rule versioning, stress test, DR.
