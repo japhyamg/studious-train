@@ -226,18 +226,49 @@ class CronJobController extends Controller
 
     /**
      * 5. Generate CTR (Cash Transaction Reports)
-     *    Runs daily — auto-generates CTR for qualifying transactions
+     *    Runs daily — auto-generates CTR cases for accounts whose cash volume
+     *    crosses the configured threshold (CBN 5.8(a)(i)).
      *
      *    URL: /cron-job/generate-ctr
      */
     public function generateCtr()
     {
-        // CTR generation logic placeholder
-        $message = "CTR generation cron executed.";
-        Log::info($message);
-        activity()->log($message);
+        try {
+            $service = new \App\Services\CtrDetectionService();
+            $stats = $service->detect();
 
-        return response()->json(['status' => 'success', 'message' => $message]);
+            $message = "CTR detection: {$stats['accounts_evaluated']} accounts, {$stats['cases_created']} CTR cases created.";
+            Log::info($message);
+            activity()->log($message);
+
+            return response()->json(['status' => 'success', 'message' => $message, 'stats' => $stats]);
+        } catch (\Exception $e) {
+            Log::error("CTR detection failed: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * 5b. Audit Trail Archival
+     *     Runs monthly — exports append-only audit entries older than the
+     *     retention window to CSV storage (CBN 5.9(a)(iii)).
+     *
+     *     URL: /cron-job/audit-archive
+     */
+    public function auditArchive()
+    {
+        try {
+            $exit = \Illuminate\Support\Facades\Artisan::call('audit:archive');
+            $output = trim(\Illuminate\Support\Facades\Artisan::output());
+
+            return response()->json([
+                'status' => 'success',
+                'message' => $output ?: 'Audit archive completed.',
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Audit archival failed: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -333,11 +364,15 @@ class CronJobController extends Controller
                 ],
             ],
             'generate_ctr' => [
-                'name' => 'CTR Generation',
-                'description' => 'Auto-generates Cash Transaction Reports for qualifying transactions',
+                'name' => 'CTR Detection & Generation',
+                'description' => 'Detects accounts whose cash volume crosses the threshold and raises CTR cases',
                 'frequency' => 'Daily',
                 'url' => route('cron-job.generate-ctr'),
-                'stats' => [],
+                'stats' => [
+                    'ctr_cases_today' => FlaggedCase::where('trigger_source', FlaggedCase::SOURCE_CTR)->whereDate('created_at', today())->count(),
+                    'individual_threshold' => moneyFormat((float) settings('ctr_threshold_individual', config('governance.ctr.threshold_individual', 5000000))),
+                    'corporate_threshold' => moneyFormat((float) settings('ctr_threshold_corporate', config('governance.ctr.threshold_corporate', 10000000))),
+                ],
             ],
             'customer_sync' => [
                 'name' => 'Customer Data Sync',
@@ -349,6 +384,16 @@ class CronJobController extends Controller
                     'source_table' => settings('customer_sync_table', 'customers'),
                     'last_sync' => settings('customer_sync_last_run', 'Never'),
                     'total_customers' => Customer::count(),
+                ],
+            ],
+            'audit_archive' => [
+                'name' => 'Audit Trail Archival',
+                'description' => 'Archives append-only audit entries older than the retention window to CSV',
+                'frequency' => 'Monthly',
+                'url' => route('cron-job.audit-archive'),
+                'stats' => [
+                    'retention_days' => settings('audit_retention_days', config('governance.audit.retention_days', 1825)),
+                    'total_entries' => \Spatie\Activitylog\Models\Activity::count(),
                 ],
             ],
         ];

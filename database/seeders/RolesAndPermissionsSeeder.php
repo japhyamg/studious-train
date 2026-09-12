@@ -22,6 +22,9 @@ class RolesAndPermissionsSeeder extends Seeder
             ['name' => 'case-export', 'category' => 'Case Management'],
             ['name' => 'case-carrd', 'category' => 'Case Management'],
             ['name' => 'case-false-positive-dashboard', 'category' => 'Case Management'],
+            ['name' => 'case-disposition-approve', 'category' => 'Case Management'],
+            ['name' => 'case-file', 'category' => 'Case Management'],
+            ['name' => 'mi-reports', 'category' => 'Case Management'],
 
             // Transactions
             ['name' => 'transaction-list', 'category' => 'Transactions'],
@@ -95,6 +98,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $supervisor->givePermissionTo([
             'case-list', 'case-view', 'case-add-comment', 'case-close', 'case-performance',
             'case-export', 'case-carrd', 'case-false-positive-dashboard',
+            'case-disposition-approve', 'case-file', 'mi-reports',
             'transaction-list',
             'rule-list', 'rule-edit-value',
             'customer-list', 'customer-create', 'customer-update', 'customer-import',
@@ -119,6 +123,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'rule-list',
             'customer-list',
             'audit-trail',
+            'mi-reports',
         ]);
     }
 }

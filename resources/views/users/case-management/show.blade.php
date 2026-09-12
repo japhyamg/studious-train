@@ -7,11 +7,14 @@
 @endsection
 
 @php
-    $sourceColors = ['rule'=>'#145234','watchlist'=>'#b45309','risk_score'=>'#dc2626','ai_anomaly'=>'#7c3aed','peer_group'=>'#0284c7','pas'=>'#0d9488','preemptive'=>'#d97706','manual'=>'#64748b'];
-    $sourceIcons = ['rule'=>'bi-shield-check','watchlist'=>'bi-exclamation-diamond','risk_score'=>'bi-graph-up-arrow','ai_anomaly'=>'bi-cpu','peer_group'=>'bi-diagram-3','pas'=>'bi-globe2','preemptive'=>'bi-lightning-charge','manual'=>'bi-person'];
+    $sourceColors = ['rule'=>'#145234','watchlist'=>'#b45309','risk_score'=>'#dc2626','ai_anomaly'=>'#7c3aed','peer_group'=>'#0284c7','pas'=>'#0d9488','preemptive'=>'#d97706','ctr'=>'#0ea5e9','manual'=>'#64748b'];
+    $sourceIcons = ['rule'=>'bi-shield-check','watchlist'=>'bi-exclamation-diamond','risk_score'=>'bi-graph-up-arrow','ai_anomaly'=>'bi-cpu','peer_group'=>'bi-diagram-3','pas'=>'bi-globe2','preemptive'=>'bi-lightning-charge','ctr'=>'bi-cash-stack','manual'=>'bi-person'];
     $src = $case->trigger_source ?? 'rule';
     $srcColor = $sourceColors[$src] ?? '#64748b';
     $statusColors = ['open'=>'primary','escalated'=>'warning','closed_filed'=>'success','closed_not_filed'=>'secondary'];
+    $canApprove = auth()->user()->can('case-disposition-approve');
+    $sla = $case->slaSummary();
+    $strFiling = $case->strFilingStatus();
 @endphp
 
 @section('content')
@@ -231,15 +234,35 @@
 
                 @if(!in_array($case->status, ['closed_filed', 'closed_not_filed']))
                 <div class="divider"></div>
+
+                {{-- Pending disposition awaiting checker approval --}}
+                @if($case->has_pending_disposition)
+                <div class="p-3 rounded-3 mb-3" style="background:#fef3c7;border:1px solid #fde68a">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#b45309;margin-bottom:6px"><i class="bi bi-hourglass-split me-1"></i>Disposition Pending Approval</div>
+                    <div class="fw-semibold" style="font-size:13px">Proposed: {{ \Illuminate\Support\Str::headline($case->proposed_status) }}</div>
+                    <div style="font-size:11px;color:var(--text-muted)">By {{ $case->proposer?->name ?? '—' }} · {{ $case->proposed_at?->diffForHumans() }}</div>
+                    @if($canApprove)
+                    <div class="d-flex gap-2 mt-2">
+                        <form method="POST" action="{{ route('case-management.approve-disposition', $case->slug) }}" class="d-inline">@csrf
+                            <button class="btn btn-sm btn-success"><i class="bi bi-check-lg me-1"></i>Approve</button>
+                        </form>
+                        <form method="POST" action="{{ route('case-management.reject-disposition', $case->slug) }}" class="d-inline">@csrf
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg me-1"></i>Reject</button>
+                        </form>
+                    </div>
+                    @endif
+                </div>
+                @endif
+
                 <form method="POST" action="{{ route('case-management.update', $case->slug) }}">
                     @csrf @method('PUT')
                     <div class="mb-3"><textarea name="comment" class="form-control" rows="3" required placeholder="Add a comment or note..."></textarea></div>
                     <div class="d-flex gap-2 flex-wrap">
                         <button type="submit" name="action" value="open" class="btn btn-sm btn-primary"><i class="bi bi-chat me-1"></i>Comment</button>
                         @can('case-close')
-                        <button type="submit" name="action" value="escalated" class="btn btn-sm btn-warning"><i class="bi bi-arrow-up me-1"></i>Escalate</button>
-                        <button type="submit" name="action" value="closed_filed" class="btn btn-sm btn-success"><i class="bi bi-check-circle me-1"></i>Close (Filed)</button>
-                        <button type="submit" name="action" value="closed_not_filed" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>Close (Not Filed)</button>
+                        <button type="submit" name="action" value="escalated" class="btn btn-sm btn-warning"><i class="bi bi-arrow-up me-1"></i>{{ $canApprove ? 'Escalate' : 'Propose Escalate' }}</button>
+                        <button type="submit" name="action" value="closed_filed" class="btn btn-sm btn-success"><i class="bi bi-check-circle me-1"></i>{{ $canApprove ? 'Close (Filed)' : 'Propose Close (Filed)' }}</button>
+                        <button type="submit" name="action" value="closed_not_filed" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle me-1"></i>{{ $canApprove ? 'Close (Not Filed)' : 'Propose Close (Not Filed)' }}</button>
                         @endcan
                     </div>
                 </form>
@@ -267,6 +290,52 @@
             </div>
         </div>
         @endif
+
+        {{-- SLA / TAT Countdown --}}
+        <div class="card mb-4">
+            <div class="card-header"><span><i class="bi bi-stopwatch me-2"></i> SLA / TAT</span></div>
+            <div class="card-body text-center">
+                @php
+                    $slaColors = ['on_track' => ['#f0fdf4', '#16a34a'], 'at_risk' => ['#fef3c7', '#b45309'], 'breached' => ['#fef2f2', '#dc2626'], 'not_applicable' => ['#faf8f2', '#94a3b8']];
+                    [$sbg, $sclr] = $slaColors[$sla['status']] ?? $slaColors['not_applicable'];
+                @endphp
+                <div class="p-3 rounded-3" style="background:{{ $sbg }};border:1px solid {{ $sclr }}44">
+                    <div class="fw-bold" style="font-size:15px;color:{{ $sclr }}"><i class="bi {{ $sla['status'] === 'breached' ? 'bi-exclamation-triangle' : 'bi-stopwatch' }} me-1"></i>{{ $sla['remaining'] }}</div>
+                    @if($sla['due_at'])
+                    <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px">Due {{ $sla['due_at']->format('M d, Y H:i') }}</div>
+                    @endif
+                </div>
+                <p style="font-size:10px;color:var(--text-muted);margin:10px 0 0">TAT set by the customer's risk level (CBN 5.7(a)(i)).</p>
+            </div>
+        </div>
+
+        {{-- Filing Status (goAML) --}}
+        <div class="card mb-4">
+            <div class="card-header"><span><i class="bi bi-send me-2"></i> Filing Status</span></div>
+            <div class="card-body text-center">
+                @php $filed = $case->filing_status === \App\Models\FlaggedCase::FILING_FILED; @endphp
+                <div class="p-3 rounded-3 mb-2" style="background:{{ $filed ? '#f0fdf4' : '#fef3c7' }};border:1px solid {{ $filed ? '#bbf7d0' : '#fde68a' }}">
+                    <div class="fw-bold" style="font-size:14px;color:{{ $filed ? '#16a34a' : '#b45309' }}"><i class="bi {{ $filed ? 'bi-check-circle' : 'bi-hourglass' }} me-1"></i>{{ $case->filing_label }}</div>
+                    @if($filed)
+                        @if($case->filing_reference)<div style="font-size:10.5px;color:var(--text-muted)">Ref: {{ $case->filing_reference }}</div>@endif
+                        @if($case->filed_at)<div style="font-size:10px;color:var(--text-muted)">{{ $case->filed_at->format('M d, Y H:i') }} · {{ $case->filingUser?->name ?? '—' }}</div>@endif
+                    @elseif($strFiling['status'] !== 'not_applicable')
+                        <div style="font-size:10.5px;color:{{ $strFiling['status'] === 'breached' ? '#dc2626' : 'var(--text-muted)' }}">STR filing: {{ $strFiling['label'] }}</div>
+                    @endif
+                </div>
+                @if(!$filed && in_array($case->status, ['escalated', 'closed_filed']))
+                @can('case-file')
+                <form method="POST" action="{{ route('case-management.mark-filed', $case->slug) }}" class="mt-2">
+                    @csrf
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="filing_reference" class="form-control" placeholder="goAML reference (optional)">
+                        <button class="btn btn-success btn-sm"><i class="bi bi-check-lg me-1"></i>Mark Filed</button>
+                    </div>
+                </form>
+                @endcan
+                @endif
+            </div>
+        </div>
 
         {{-- Classification --}}
         <div class="card mb-4">

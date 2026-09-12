@@ -68,6 +68,7 @@
                         <th>Closed (Filed)</th>
                         <th>Closed (Not Filed)</th>
                         <th>Escalated</th>
+                        <th>SLA Breached</th>
                         <th>Avg Resolution</th>
                     </tr>
                 </thead>
@@ -85,6 +86,13 @@
                         <td>{{ $p['closed_filed'] }}</td>
                         <td>{{ $p['closed_not_filed'] }}</td>
                         <td>{{ $p['escalated'] }}</td>
+                        <td>
+                            @if(($p['sla_breached'] ?? 0) > 0)
+                            <span class="badge" style="background:#fef2f2;color:#dc2626;font-size:10px;border:1px solid #fecaca">{{ $p['sla_breached'] }}</span>
+                            @else
+                            <span class="badge badge-green" style="font-size:10px">0</span>
+                            @endif
+                        </td>
                         <td><span class="badge badge-green">{{ $p['avg_resolution_hours'] }}h</span></td>
                     </tr>
                     @endforeach

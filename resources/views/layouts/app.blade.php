@@ -33,6 +33,7 @@
             @can('case-carrd')<a href="{{ route('case-management.carrd') }}" class="sidebar-link {{ request()->routeIs('case-management.carrd') ? 'active' : '' }}"><i class="bi bi-clock-history"></i> C.A.R.D</a>@endcan
             @can('case-performance')<a href="{{ route('case-management.performance') }}" class="sidebar-link {{ request()->routeIs('case-management.performance') ? 'active' : '' }}"><i class="bi bi-speedometer2"></i> Review Performance</a>@endcan
             @can('case-false-positive-dashboard')<a href="{{ route('case-management.false-positive-dashboard') }}" class="sidebar-link {{ request()->routeIs('case-management.false-positive*') ? 'active' : '' }}"><i class="bi bi-pie-chart"></i> False Positives</a>@endcan
+            @can('mi-reports')<a href="{{ route('mi-reports.index') }}" class="sidebar-link {{ request()->routeIs('mi-reports.*') ? 'active' : '' }}"><i class="bi bi-file-earmark-bar-graph"></i> MI Reports</a>@endcan
             @endcan
 
             {{-- Monitoring --}}

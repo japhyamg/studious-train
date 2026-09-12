@@ -9,6 +9,7 @@ class RiskLevel extends Model
     protected $fillable = [
         'label', 'min_score', 'max_score',
         'review_schedule_days', 'diligence_type',
+        'case_tat_hours',
     ];
 
     /**

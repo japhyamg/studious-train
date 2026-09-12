@@ -74,3 +74,9 @@ Schedule::call(function () {
     // Build cron expression from settings: every N hours
     '0 */' . (\App\Services\CustomerSyncService::getSyncIntervalHours()) . ' * * *'
 )->name('customer-sync')->withoutOverlapping();
+
+// Audit trail archival — monthly on the 1st at 3:30 AM (append-only, CBN 5.9(a)(iii))
+Schedule::command('audit:archive')
+    ->monthlyOn(1, '03:30')
+    ->name('audit-archive')
+    ->withoutOverlapping();

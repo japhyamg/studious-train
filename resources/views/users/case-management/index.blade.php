@@ -10,12 +10,12 @@
         'rule' => 'bi-shield-check', 'watchlist' => 'bi-exclamation-diamond',
         'risk_score' => 'bi-graph-up-arrow', 'ai_anomaly' => 'bi-cpu',
         'peer_group' => 'bi-diagram-3', 'pas' => 'bi-globe2', 'preemptive' => 'bi-lightning-charge',
-        'manual' => 'bi-person',
+        'ctr' => 'bi-cash-stack', 'manual' => 'bi-person',
     ];
     $sourceColors = [
         'rule' => '#145234', 'watchlist' => '#b45309', 'risk_score' => '#dc2626',
         'ai_anomaly' => '#7c3aed', 'peer_group' => '#0284c7', 'pas' => '#0d9488', 'preemptive' => '#d97706',
-        'manual' => '#64748b',
+        'ctr' => '#0ea5e9', 'manual' => '#64748b',
     ];
 @endphp
 
@@ -112,6 +112,7 @@
                         <th>Customer</th>
                         <th>Side</th>
                         <th>Status</th>
+                        <th>SLA</th>
                         <th>Classification</th>
                         <th>Reviewer</th>
                         <th>Date</th>
@@ -138,7 +139,22 @@
                             <span class="badge" style="background:#faf8f2;color:var(--text-secondary);font-size:9px;border:1px solid var(--border-light)">{{ ucfirst($case['flagged_side']) }}</span>
                             @endif
                         </td>
-                        <td><span class="badge badge-status-{{ $case['status'] }}">{{ \Illuminate\Support\Str::headline($case['status']) }}</span></td>
+                        <td>
+                            <span class="badge badge-status-{{ $case['status'] }}">{{ \Illuminate\Support\Str::headline($case['status']) }}</span>
+                            @if(!empty($case['pending_disposition']))
+                            <span class="badge" style="background:#fef3c7;color:#b45309;font-size:8px;border:1px solid #fde68a" data-bs-toggle="tooltip" title="Disposition proposed: {{ \Illuminate\Support\Str::headline($case['proposed_status']) }}">Pending</span>
+                            @endif
+                        </td>
+                        <td>
+                            @php
+                                $sla = $case['sla'] ?? ['status' => 'not_applicable', 'remaining' => '—'];
+                                $slaColors = ['on_track' => ['#f0fdf4', '#16a34a'], 'at_risk' => ['#fef3c7', '#b45309'], 'breached' => ['#fef2f2', '#dc2626'], 'not_applicable' => ['#faf8f2', '#94a3b8']];
+                                [$sbg, $sclr] = $slaColors[$sla['status']] ?? $slaColors['not_applicable'];
+                            @endphp
+                            <span class="badge" style="background:{{ $sbg }};color:{{ $sclr }};font-size:9px;border:1px solid {{ $sclr }}33" data-bs-toggle="tooltip" title="SLA deadline">
+                                <i class="bi {{ $sla['status'] === 'breached' ? 'bi-exclamation-triangle' : 'bi-stopwatch' }} me-1"></i>{{ $sla['remaining'] }}
+                            </span>
+                        </td>
                         <td>
                             @if($case['classification'] == 'false_positive')
                             <span class="badge" style="background:#f1f0ee;color:#6b6860;font-size:9px;border:1px solid #e4e3e0">False Positive</span>
@@ -159,7 +175,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="11">
+                        <td colspan="12">
                             <div class="empty-state">
                                 <div class="empty-state-icon"><i class="bi bi-folder2-open"></i></div>
                                 <div class="empty-state-title">No cases found</div>

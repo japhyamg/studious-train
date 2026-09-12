@@ -57,6 +57,7 @@ class FlaggedCasesAnalyticService
         $cases = $query->orderBy('created_at', 'DESC')->get();
 
         return $cases->map(function ($case) {
+            $sla = $case->slaSummary();
             return [
                 'id' => $case->id,
                 'case_id' => $case->slug,
@@ -73,6 +74,10 @@ class FlaggedCasesAnalyticService
                 'closed_by' => $case->closed_by,
                 'created_at' => $case->created_at,
                 'updated_at' => $case->updated_at,
+                'sla' => $sla,
+                'pending_disposition' => $case->has_pending_disposition,
+                'proposed_status' => $case->proposed_status,
+                'filing_status' => $case->filing_status,
             ];
         })->toArray();
     }
@@ -112,14 +117,42 @@ class FlaggedCasesAnalyticService
                 $avgResolution = round($totalHours / $closedCases->count(), 1);
             }
 
+            // SLA: open cases already past their deadline
+            $slaBreached = FlaggedCase::where('user_id', $reviewer->id)
+                ->where('status', 'open')
+                ->whereNotNull('sla_due_at')
+                ->where('sla_due_at', '<', now())
+                ->count();
+
             $performance[] = [
                 'id' => $reviewer->id, 'name' => $reviewer->name,
                 'total' => $total, 'open' => $open,
                 'closed_filed' => $closedFiled, 'closed_not_filed' => $closedNotFiled,
                 'escalated' => $escalated, 'avg_resolution_hours' => $avgResolution,
+                'sla_breached' => $slaBreached,
             ];
         }
         return $performance;
+    }
+
+    /**
+     * Overall case SLA compliance (5.7(a)(i)) — used by the MI report pack.
+     */
+    public function getCaseSlaCompliance(): array
+    {
+        $total = FlaggedCase::whereNotNull('sla_due_at')->count();
+        $breached = FlaggedCase::whereNotNull('sla_due_at')
+            ->where('sla_due_at', '<', now())
+            ->count();
+        $open = FlaggedCase::where('status', 'open')->count();
+
+        return [
+            'total' => $total,
+            'breached' => $breached,
+            'within' => max(0, $total - $breached),
+            'compliance_rate' => $total > 0 ? round((($total - $breached) / $total) * 100, 1) : 100,
+            'open' => $open,
+        ];
     }
 
     public function getReviewerPerformanceChartData($from = null, $to = null): array

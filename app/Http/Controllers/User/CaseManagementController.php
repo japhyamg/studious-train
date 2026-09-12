@@ -39,6 +39,8 @@ class CaseManagementController extends Controller implements HasMiddleware
             new Middleware('permission:case-list', only: ['index']),
             new Middleware('permission:case-view|case-add-comment', only: ['show', 'update']),
             new Middleware('permission:case-add-comment', only: ['update']),
+            new Middleware('permission:case-disposition-approve', only: ['approveDisposition', 'rejectDisposition']),
+            new Middleware('permission:case-file', only: ['markFiled']),
             new Middleware('permission:case-performance', only: ['casePerformance', 'exportPerformance']),
             new Middleware('permission:case-export', only: ['export']),
             new Middleware('permission:case-carrd', only: ['carrd', 'exportCarrd']),
@@ -160,15 +162,130 @@ class CaseManagementController extends Controller implements HasMiddleware
                 $case->user_id = Auth::id();
             }
 
-            $case->status = $request->action;
-            if (in_array($request->action, ['closed_filed', 'closed_not_filed'])) {
+            $action = $request->action;
+
+            // Maker-checker: a terminal disposition proposed by a maker is held
+            // for supervisor/checker approval instead of being applied directly
+            // (CBN 5.7(a)(ii)).
+            if (
+                in_array($action, FlaggedCase::PROPOSABLE_STATUSES)
+                && settingBool('maker_checker_enabled', config('governance.maker_checker.enabled', true))
+                && !Auth::user()->hasPermissionTo('case-disposition-approve')
+            ) {
+                $case->proposed_status = $action;
+                $case->proposed_by = Auth::id();
+                $case->proposed_at = now();
+                $case->approved_by = null;
+                $case->approved_at = null;
+                $case->update();
+
+                activity()->performedOn($case)->log(
+                    $case->slug . ' disposition proposed: ' . Str::headline($action) . ' (awaiting approval)'
+                );
+
+                return redirect(route('case-management.show', $case->slug))
+                    ->with('success', 'Disposition proposed — awaiting supervisor approval.');
+            }
+
+            $case->status = $action === 'open' ? 'open' : $action;
+            if (in_array($action, ['closed_filed', 'closed_not_filed'])) {
                 $case->closed_by = Auth::id();
             }
+
+            // Checkers/approvers apply directly and record their approval.
+            if (in_array($action, FlaggedCase::PROPOSABLE_STATUSES)) {
+                $case->approved_by = Auth::id();
+                $case->approved_at = now();
+            }
+            $case->proposed_status = null;
+            $case->proposed_by = null;
+            $case->proposed_at = null;
             $case->update();
 
-            activity()->performedOn($case)->log($case->slug . ' status changed to ' . Str::headline($request->action));
+            activity()->performedOn($case)->log($case->slug . ' status changed to ' . Str::headline($case->status));
 
             return redirect(route('case-management.show', $case->slug))->with('success', 'Comment added successfully.');
+        }
+
+        return redirect(route('case-management.index'))->with('error', 'Unauthorized Action!!');
+    }
+
+    /**
+     * Approve a pending maker disposition (checker action) — CBN 5.7(a)(ii).
+     */
+    public function approveDisposition(Request $request, $slug)
+    {
+        $case = FlaggedCase::where('slug', $slug)->first();
+
+        if ($case && $case->proposed_status) {
+            $action = $case->proposed_status;
+
+            $case->status = $action;
+            if (in_array($action, ['closed_filed', 'closed_not_filed'])) {
+                $case->closed_by = $case->proposed_by ?? Auth::id();
+            }
+            $case->approved_by = Auth::id();
+            $case->approved_at = now();
+            $case->proposed_status = null;
+            $case->proposed_by = null;
+            $case->proposed_at = null;
+            $case->update();
+
+            activity()->performedOn($case)->log(
+                $case->slug . ' disposition approved: ' . Str::headline($action)
+            );
+
+            return redirect(route('case-management.show', $case->slug))
+                ->with('success', 'Disposition approved and applied.');
+        }
+
+        return redirect(route('case-management.index'))->with('error', 'No pending disposition to approve.');
+    }
+
+    /**
+     * Reject a pending maker disposition (checker action) — CBN 5.7(a)(ii).
+     */
+    public function rejectDisposition(Request $request, $slug)
+    {
+        $case = FlaggedCase::where('slug', $slug)->first();
+
+        if ($case && $case->proposed_status) {
+            $rejected = Str::headline($case->proposed_status);
+
+            $case->proposed_status = null;
+            $case->proposed_by = null;
+            $case->proposed_at = null;
+            $case->update();
+
+            activity()->performedOn($case)->log($case->slug . ' disposition rejected: ' . $rejected);
+
+            return redirect(route('case-management.show', $case->slug))
+                ->with('success', 'Disposition rejected — the case remains open.');
+        }
+
+        return redirect(route('case-management.index'))->with('error', 'No pending disposition to reject.');
+    }
+
+    /**
+     * Mark a case's report as filed with the FIU (goAML) — CBN 5.8(a)(i).
+     */
+    public function markFiled(Request $request, $slug)
+    {
+        $case = FlaggedCase::where('slug', $slug)->first();
+
+        if ($case) {
+            $case->filing_status = FlaggedCase::FILING_FILED;
+            $case->filed_at = now();
+            $case->filed_by = Auth::id();
+            $case->filing_reference = $request->input('filing_reference');
+            $case->update();
+
+            activity()->performedOn($case)->log(
+                $case->slug . ' marked as filed' . ($case->filing_reference ? ' (ref: ' . $case->filing_reference . ')' : '')
+            );
+
+            return redirect(route('case-management.show', $case->slug))
+                ->with('success', 'Case marked as filed.');
         }
 
         return redirect(route('case-management.index'))->with('error', 'Unauthorized Action!!');

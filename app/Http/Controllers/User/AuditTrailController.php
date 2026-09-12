@@ -72,7 +72,10 @@ class AuditTrailController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('description', 'LIKE', "%{$search}%")
                   ->orWhere('properties', 'LIKE', "%{$search}%")
-                  ->orWhere('subject_type', 'LIKE', "%{$search}%");
+                  ->orWhere('subject_type', 'LIKE', "%{$search}%")
+                  ->orWhere('subject_id', 'LIKE', "%{$search}%")
+                  ->orWhereHas('causer', fn($cq) => $cq->where('name', 'LIKE', "%{$search}%")
+                      ->orWhere('email', 'LIKE', "%{$search}%"));
             });
         }
 

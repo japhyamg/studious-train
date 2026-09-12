@@ -40,6 +40,17 @@ function settings(string $name, $default = null)
 }
 
 /**
+ * Read a boolean setting stored as a string ('true'/'false'/'1'/'0').
+ */
+function settingBool(string $name, bool $default = true): bool
+{
+    $value = settings($name);
+    if ($value === null) return $default;
+
+    return in_array(strtolower((string) $value), ['1', 'true', 'yes', 'on'], true);
+}
+
+/**
  * Get business details
  */
 function getBusinessDetails(string $name = null)
@@ -63,7 +74,11 @@ function createCaseSlug(): string
 }
 
 /**
- * Get reviewer for a rule (round-robin or first assigned)
+ * Get reviewer for a case.
+ *
+ * Rule-assigned reviewers always win (explicit assignment). Otherwise a
+ * round-robin over the reviewer team picks the least-loaded reviewer — the one
+ * with the fewest currently open cases (5.7(a)(i)).
  */
 function getReviewer(?int $ruleId = null): ?int
 {
@@ -72,9 +87,23 @@ function getReviewer(?int $ruleId = null): ?int
         return $assignedRule->user_id;
     }
 
-    // Fallback: get any user with reviewer role
-    $reviewer = User::role('reviewer')->first();
-    return $reviewer?->id;
+    $reviewers = User::role('reviewer')->get();
+    if ($reviewers->isEmpty()) return null;
+
+    if ($reviewers->count() === 1) {
+        return $reviewers->first()->id;
+    }
+
+    $loads = FlaggedCase::whereIn('user_id', $reviewers->pluck('id'))
+        ->where('status', 'open')
+        ->selectRaw('user_id, count(*) as open_count')
+        ->groupBy('user_id')
+        ->pluck('open_count', 'user_id');
+
+    return $reviewers
+        ->sortBy(fn($r) => $loads[$r->id] ?? 0)
+        ->first()
+        ->id;
 }
 
 /**

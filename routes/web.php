@@ -18,6 +18,7 @@ use App\Http\Controllers\User\PeerGroupAnalysisController;
 use App\Http\Controllers\User\PASController;
 use App\Http\Controllers\User\SanctionsController;
 use App\Http\Controllers\User\AIAlertController;
+use App\Http\Controllers\User\ReportController;
 use App\Http\Controllers\User\ToolController;
 
 /*
@@ -64,6 +65,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/toogle-classification/{id}', [CaseManagementController::class, 'toogleClass'])->name('toogle-class');
         Route::post('/set-nfiu-indicator/{id}', [CaseManagementController::class, 'setNfiuIndicator'])->name('set-nfiu-indicator');
         Route::post('/interdict/{id}', [CaseManagementController::class, 'toggleInterdiction'])->name('interdict');
+        Route::post('/approve-disposition/{id}', [CaseManagementController::class, 'approveDisposition'])->name('approve-disposition');
+        Route::post('/reject-disposition/{id}', [CaseManagementController::class, 'rejectDisposition'])->name('reject-disposition');
+        Route::post('/mark-filed/{id}', [CaseManagementController::class, 'markFiled'])->name('mark-filed');
         Route::post('/export', [CaseManagementController::class, 'export'])->name('export');
         Route::get('/performance', [CaseManagementController::class, 'casePerformance'])->name('performance');
         Route::get('/performance/export', [CaseManagementController::class, 'exportPerformance'])->name('performance.export');
@@ -73,6 +77,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/false-positive-dashboard', [CaseManagementController::class, 'falsePositiveDashboard'])->name('false-positive-dashboard');
         Route::get('/false-positive-dashboard/export', [CaseManagementController::class, 'exportFalsePositive'])->name('false-positive-dashboard.export');
         Route::post('/set-false-positive-threshold', [CaseManagementController::class, 'setFalsePositiveThreshold'])->name('set-false-positive-threshold');
+    });
+
+    /*--- Management Information (MI) Reports ---*/
+    Route::prefix('mi-reports')->name('mi-reports.')->middleware('permission:mi-reports')->group(function () {
+        Route::get('/', [ReportController::class, 'index'])->name('index');
+        Route::get('/export', [ReportController::class, 'export'])->name('export');
     });
 
     /*--- Transaction Rules ---*/
@@ -222,6 +232,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('generate-api-keys', [SettingsController::class, 'generateApiKeys'])->name('generate-api-keys');
     Route::post('settings-toggle-update', [SettingsController::class, 'settingsToggleUpdate'])->name('settings-toggle-update');
     Route::post('settings/customer-sync', [SettingsController::class, 'saveCustomerSyncSettings'])->name('settings.customer-sync');
+    Route::post('settings/governance', [SettingsController::class, 'saveGovernanceSettings'])->name('settings.governance');
 });
 
 /*
@@ -242,6 +253,7 @@ Route::prefix('cron-job')->name('cron-job.')->middleware(['auth', 'role:admin'])
     Route::get('/risk-rate-new-customers', [\App\Http\Controllers\CronJobController::class, 'riskRateNewCustomers'])->name('risk-rate-new-customers');
     Route::get('/generate-ctr', [\App\Http\Controllers\CronJobController::class, 'generateCtr'])->name('generate-ctr');
     Route::get('/customer-sync', [\App\Http\Controllers\CronJobController::class, 'customerSync'])->name('customer-sync');
+    Route::get('/audit-archive', [\App\Http\Controllers\CronJobController::class, 'auditArchive'])->name('audit-archive');
 });
 
 // Cron status dashboard (authenticated)

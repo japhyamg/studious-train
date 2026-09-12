@@ -413,6 +413,64 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
 - With the ML server reachable, a flagged anomaly records its model version and
   explanation; the AI alerts page shows `v…` beneath the score.
 
+### 2.17 Phase 5.1 — case TAT/SLA + round-robin assignment
+
+**What changed**
+- `risk_levels.case_tat_hours` (Low 72h / Medium 48h / High 24h, configurable)
+  and `flagged_cases.sla_due_at`, assigned automatically on case creation via a
+  `FlaggedCase::booted()` hook.
+- `FlaggedCase::slaSummary()` returns an `on_track / at_risk / breached`
+  countdown used on the case list (new **SLA** column) and the case detail
+  sidebar (SLA card) plus the Review Performance table (SLA-breached column).
+- `getReviewer()` now does least-loaded round-robin across the reviewer team
+  when no rule-assigned reviewer exists (5.7(a)(i)).
+
+### 2.18 Phase 5.2 — maker-checker disposition flow
+
+**What changed**
+- Terminal dispositions (escalate / close filed / close not filed) proposed by
+  a maker are held as a pending proposal (`proposed_status/by/at`) for
+  supervisor approval; checkers apply directly (5.7(a)(ii)).
+- New `approveDisposition` / `rejectDisposition` endpoints + approval card on
+  the case page; pending proposals also show a "Pending" badge on the list.
+- New permission `case-disposition-approve` (admin/supervisor).
+
+### 2.19 Phase 5.4 — CTR detection + goAML filing status + STR SLA
+
+**What changed**
+- `CtrDetectionService` aggregates cash-channel transactions per account over
+  the rolling window and raises a **CTR** case (new `SOURCE_CTR`) above the
+  individual/corporate threshold; wired into `/cron-job/generate-ctr` + the
+  Cron Jobs status card.
+- Filing lifecycle on cases: `filing_status` (draft/filed), `filed_at/by`,
+  `filing_reference`, a "Mark as filed" action (permission `case-file`) and a
+  filing card on the case page.
+- STR filing SLA countdown (`str_filing_sla_days`, default 5) shown on STR cases.
+
+### 2.20 Phase 5.5 — audit search + device logging + retention
+
+**What changed**
+- Audit search now also matches the causer's name/email and subject id.
+- Login records `last_login_at/ip/device` on the user and logs failed attempts
+  with IP/device/email.
+- `audit:archive` command + monthly schedule + Cron Jobs card exports
+  append-only entries older than `audit_retention_days` (default 5 years) to
+  CSV — the live log is never deleted (5.9(a)(iii)).
+
+### 2.21 Phase 5.6 — MI report pack (CCO/Board)
+
+**What changed**
+- `ManagementInformationService` + `/mi-reports` (permission `mi-reports`):
+  customers by risk band, case volumes/outcomes, STR/CTR filings, SLA
+  compliance, screening/detection counts and a 12-month STR/CTR trend — with
+  CSV/PDF export (5.8(a)(ii)).
+
+**Phase 5 test checklist**
+- `php artisan migrate` then verify the Cron Jobs page shows CTR + Audit
+  archival cards; run `/cron-job/generate-ctr`; open a case to see the SLA
+  card, filing card and (as a reviewer) the propose/approve maker-checker flow;
+  open `/mi-reports`.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -502,8 +560,9 @@ php artisan risk:rate
 - ✅ **Phase 4** — pre-emptive alert engine + TTR scoring (4.1 pre-emptive
   alerts, 4.2 multi-condition factors + TTR-as-reason, 4.3 peer-group
   completion, 4.4 AI explainability — all done).
-- ⬜ **Phase 5** — case SLA/TAT, maker-checker, CTR generation, audit
-  retention + exports.
+- ✅ **Phase 5** — case TAT/SLA + round-robin (5.1), maker-checker (5.2),
+  export buttons (5.3), CTR detection + filing status + STR SLA (5.4), audit
+  search + device logging + retention (5.5), MI report pack (5.6) — all done.
 - ⬜ **Phase 6** — API docs, encryption, rule versioning, stress test, DR.
 
 ---
@@ -511,7 +570,8 @@ php artisan risk:rate
 ## 6. Known caveats / follow-ups
 
 - No automated test suite yet (planned in Phase 0 task 0.9).
-- `getReviewer()` picks the first assigned user (no round-robin yet).
+- `getReviewer()` is least-loaded round-robin (Phase 5.1) — still not a
+  strict round-robin pointer; revisit for high-volume queue workers.
 - `createCaseSlug()` uses `count()+1` — fine for low concurrency, revisit for
   high-volume queue workers.
 - BVN/NIN are stored in plaintext — encryption lands in Phase 6.
