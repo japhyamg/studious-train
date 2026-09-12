@@ -9,11 +9,13 @@
     $sourceIcons = [
         'rule' => 'bi-shield-check', 'watchlist' => 'bi-exclamation-diamond',
         'risk_score' => 'bi-graph-up-arrow', 'ai_anomaly' => 'bi-cpu',
-        'peer_group' => 'bi-diagram-3', 'manual' => 'bi-person',
+        'peer_group' => 'bi-diagram-3', 'pas' => 'bi-globe2', 'preemptive' => 'bi-lightning-charge',
+        'manual' => 'bi-person',
     ];
     $sourceColors = [
         'rule' => '#145234', 'watchlist' => '#b45309', 'risk_score' => '#dc2626',
-        'ai_anomaly' => '#7c3aed', 'peer_group' => '#0284c7', 'manual' => '#64748b',
+        'ai_anomaly' => '#7c3aed', 'peer_group' => '#0284c7', 'pas' => '#0d9488', 'preemptive' => '#d97706',
+        'manual' => '#64748b',
     ];
 @endphp
 

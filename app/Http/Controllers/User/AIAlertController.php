@@ -67,6 +67,8 @@ class AIAlertController extends Controller
                 'severity' => $aiScore->severity,
                 'reason' => $aiScore->anomaly_reason,
                 'transaction_side' => $aiScore->transaction_side,
+                'model_version' => $aiScore->model_version,
+                'explanation' => $aiScore->explanation,
             ],
             'flagged_side' => $flaggedSide,
         ]);

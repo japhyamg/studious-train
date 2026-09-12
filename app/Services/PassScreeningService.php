@@ -109,7 +109,7 @@ class PassScreeningService
             'user_id' => getReviewer(),
             'customer_id' => $customer->id,
             'account_no' => $customer->account_number,
-            'type' => 'customer',
+            'type' => 'account',
             'trigger_source' => FlaggedCase::SOURCE_PAS,
             'trigger_details' => [
                 'kind' => $kind,

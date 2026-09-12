@@ -38,6 +38,12 @@ Schedule::command('pas:screen-recent-customers')
     ->name('pas-screening')
     ->withoutOverlapping();
 
+// Pre-emptive behavioural alert scoring — daily at 2:45 AM
+Schedule::command('preemptive:score')
+    ->dailyAt('02:45')
+    ->name('preemptive-score')
+    ->withoutOverlapping();
+
 // Auto Risk Rate New Customers — runs daily at 4:00 AM
 Schedule::call(function () {
     app(\App\Http\Controllers\CronJobController::class)->riskRateNewCustomers();

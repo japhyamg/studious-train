@@ -31,6 +31,7 @@ class FlaggedCase extends Model
     const SOURCE_AI_ANOMALY = 'ai_anomaly';
     const SOURCE_PEER_GROUP = 'peer_group';
     const SOURCE_PAS = 'pas';
+    const SOURCE_PREEMPTIVE = 'preemptive';
     const SOURCE_MANUAL = 'manual';
 
     // Interdiction status constants (CBN 5.3(a)(viii))
@@ -101,6 +102,7 @@ class FlaggedCase extends Model
             self::SOURCE_AI_ANOMALY => 'AI Anomaly Detected',
             self::SOURCE_PEER_GROUP => 'Peer Group Outlier',
             self::SOURCE_PAS => 'PEP / Sanctions Screening',
+            self::SOURCE_PREEMPTIVE => 'Pre-emptive Alert',
             self::SOURCE_MANUAL => 'Manual',
             default => ucfirst($this->trigger_source ?? 'Unknown'),
         };

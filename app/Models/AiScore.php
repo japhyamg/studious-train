@@ -9,6 +9,7 @@ class AiScore extends Model
     protected $fillable = [
         'transaction_id', 'account_number', 'transaction_side',
         'is_anomaly', 'anomaly_score', 'severity', 'anomaly_reason', 'raw_response',
+        'model_version', 'explanation',
     ];
 
     protected $casts = [

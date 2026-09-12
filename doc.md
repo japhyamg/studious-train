@@ -376,6 +376,43 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
 - Process a transaction above its group's upper threshold → an "Outlier" row
   appears and a peer-group case is created.
 
+### 2.15 Phase 4.1 — pre-emptive behavioural alert engine
+
+**What changed**
+- New `FlaggedCase::SOURCE_PREEMPTIVE` ("Pre-emptive Alert").
+- `config/preemptive.php` — config-driven factors (prior STR/CTR, PEP receipts,
+  midnight activity, repeat sender, high frequency, high credit volume) each
+  with operator/value/window/points; threshold defaults to 5 and is overridable
+  via the `preemptive_alert_threshold` setting.
+- `PreemptiveAlertService::scoreAllCustomers()` scores every customer (chunked)
+  and raises a PREEMPTIVE case when points ≥ threshold, carrying the full factor
+  breakdown (`factor`, expected vs actual, points) in `trigger_details`. One
+  alert per customer per day.
+- Behaviour metrics extracted to `CustomerBehaviourService` and now shared with
+  the transaction risk scorer (single source of truth).
+- `preemptive:score` command + daily 02:45 schedule; manual trigger
+  `/cron-job/preemptive-alerts` + a Cron Jobs status card.
+- Fix: `flagged_cases.transaction_rule_id` made nullable (non-rule sources —
+  watchlist/risk/peer/AI/preemptive/PAS — create cases without a rule).
+- Fix: PAS cases use `type = account` (the column's enum is transaction|account).
+
+**Test**
+- `php artisan migrate` then `php artisan preemptive:score` → customers meeting
+  the factor threshold get a "Pre-emptive Alert" case with the factor breakdown.
+
+### 2.16 Phase 4.4 — AI explainability + model version
+
+**What changed**
+- `ai_scores` gains `model_version` and `explanation` columns.
+- `AIDetectionService` captures the ML response's `model_version` and builds a
+  plain-language `explanation` (anomaly decision, score, severity, reason, model).
+- AI cases carry `model_version` + `explanation` in `trigger_details`; the AI
+  alerts page shows the model version under the score (CBN 5.4(a)(iv)).
+
+**Test**
+- With the ML server reachable, a flagged anomaly records its model version and
+  explanation; the AI alerts page shows `v…` beneath the score.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -462,9 +499,9 @@ php artisan risk:rate
 - ✅ **Phase 3** — screening as a service (3.1 sanction sources + sync logs;
   3.2 fuzzy/scored matching; 3.3 nightly PAS; 3.4 PEP auto-flag; 3.5
   block/freeze flag — all done).
-- 🔶 **Phase 4** — pre-emptive alert engine + TTR scoring (4.2 multi-condition
-  factors + TTR-as-reason done; 4.3 peer-group completion done; 4.1 pre-emptive
-  alerts, 4.4 AI explainability pending).
+- ✅ **Phase 4** — pre-emptive alert engine + TTR scoring (4.1 pre-emptive
+  alerts, 4.2 multi-condition factors + TTR-as-reason, 4.3 peer-group
+  completion, 4.4 AI explainability — all done).
 - ⬜ **Phase 5** — case SLA/TAT, maker-checker, CTR generation, audit
   retention + exports.
 - ⬜ **Phase 6** — API docs, encryption, rule versioning, stress test, DR.

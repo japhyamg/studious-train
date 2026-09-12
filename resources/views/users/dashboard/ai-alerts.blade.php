@@ -57,6 +57,9 @@
                     <span class="fw-bold" style="color:{{ $a->anomaly_score > 0.8 ? '#dc2626' : ($a->anomaly_score > 0.5 ? '#b45309' : '#2563eb') }}">
                         {{ number_format($a->anomaly_score, 3) }}
                     </span>
+                    @if($a->model_version)
+                    <div style="font-size:10px;color:var(--text-muted)">v{{ $a->model_version }}</div>
+                    @endif
                 </td>
                 <td>
                     @php $sevColors = ['high'=>['#fef2f2','#dc2626','#fecaca'],'medium'=>['#fef3c7','#b45309','#fde68a'],'low'=>['#eff6ff','#2563eb','#bfdbfe']]; $sc = $sevColors[strtolower($a->severity ?? 'low')] ?? $sevColors['low']; @endphp

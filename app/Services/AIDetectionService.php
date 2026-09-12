@@ -43,6 +43,8 @@ class AIDetectionService
                     'severity' => $res['data']['severity'] ?? null,
                     'anomaly_reason' => $res['data']['anomaly_reason'] ?? null,
                     'raw_response' => json_encode($res['data']),
+                    'model_version' => $res['data']['model_version'] ?? null,
+                    'explanation' => $this->buildExplanation($res['data']),
                 ]);
             }
         }
@@ -61,5 +63,32 @@ class AIDetectionService
         } catch (\Exception $e) {
             return ['success' => false, 'error' => 'Connection failed: ' . $e->getMessage()];
         }
+    }
+
+    /**
+     * Build a plain-language explainability note from the ML response so a
+     * reviewer can see why the model flagged the transaction (CBN 5.4(a)(iv)).
+     */
+    protected function buildExplanation(array $data): ?string
+    {
+        $parts = [];
+
+        $isAnomaly = !empty($data['is_anomaly']);
+        $parts[] = $isAnomaly ? 'Anomaly detected' : 'No anomaly detected';
+
+        if (isset($data['anomaly_score'])) {
+            $parts[] = 'score ' . number_format((float) $data['anomaly_score'], 3);
+        }
+        if (!empty($data['severity'])) {
+            $parts[] = 'severity ' . strtolower((string) $data['severity']);
+        }
+        if (!empty($data['anomaly_reason'])) {
+            $parts[] = 'reason: ' . (string) $data['anomaly_reason'];
+        }
+        if (!empty($data['model_version'])) {
+            $parts[] = 'model ' . (string) $data['model_version'];
+        }
+
+        return implode('; ', $parts);
     }
 }

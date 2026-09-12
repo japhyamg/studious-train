@@ -159,6 +159,30 @@ class CronJobController extends Controller
     }
 
     /**
+     * 3c. Pre-emptive Behavioural Alert Scoring
+     *     Runs daily — scores every customer against pre-emptive factors and
+     *     raises PREEMPTIVE cases above threshold.
+     *
+     *     URL: /cron-job/preemptive-alerts
+     */
+    public function preemptiveAlerts()
+    {
+        try {
+            $service = new \App\Services\PreemptiveAlertService(app(\App\Services\CustomerBehaviourService::class));
+            $stats = $service->scoreAllCustomers();
+
+            $message = "Pre-emptive scoring: {$stats['scored']} scored, {$stats['alerts']} alerts, {$stats['errors']} errors.";
+            Log::info($message);
+            activity()->log($message);
+
+            return response()->json(['status' => 'success', 'message' => $message, 'stats' => $stats]);
+        } catch (\Exception $e) {
+            Log::error("Pre-emptive scoring failed: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * 4. Auto Risk Rating (new customers)
      *    Runs daily — rates customers who were added in the last 24 hours
      *
@@ -285,6 +309,17 @@ class CronJobController extends Controller
                     'recent_24h' => Customer::where('created_at', '>=', now()->subDay())->count(),
                     'pep_flags' => Customer::where('isPep', true)->count(),
                     'cases_today' => FlaggedCase::whereDate('created_at', today())->count(),
+                ],
+            ],
+            'preemptive_alerts' => [
+                'name' => 'Pre-emptive Behavioural Alerts',
+                'description' => 'Scores all customers against pre-emptive factors and raises PREEMPTIVE cases',
+                'frequency' => 'Daily',
+                'url' => route('cron-job.preemptive-alerts'),
+                'stats' => [
+                    'customers' => Customer::count(),
+                    'alerts_today' => FlaggedCase::where('trigger_source', FlaggedCase::SOURCE_PREEMPTIVE)->whereDate('created_at', today())->count(),
+                    'threshold' => settings('preemptive_alert_threshold', config('preemptive.threshold', 5)),
                 ],
             ],
             'auto_risk_rating' => [
