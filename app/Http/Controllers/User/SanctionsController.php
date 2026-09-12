@@ -35,7 +35,15 @@ class SanctionsController extends Controller implements HasMiddleware
 
         $logs = WatchListSyncLog::orderByDesc('synced_at')->paginate(20);
 
-        return view('users.sanctions.index', compact('sources', 'counts', 'latest', 'logs'));
+        $totalRecords = WatchListEntry::count();
+        $lastSyncAt = WatchListSyncLog::max('synced_at');
+        $todayFailed = WatchListSyncLog::where('status', 'failed')->whereDate('synced_at', today())->count();
+        $activeSources = collect($sources)->filter(fn($s) => !empty($s['enabled']) && !empty($s['url']))->count();
+
+        return view('users.sanctions.index', compact(
+            'sources', 'counts', 'latest', 'logs',
+            'totalRecords', 'lastSyncAt', 'todayFailed', 'activeSources'
+        ));
     }
 
     public function sync(Request $request)
