@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Models\NibssWatchList;
+use App\Services\WatchListImportService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
@@ -84,8 +85,21 @@ class NIBSSWatchListController extends Controller implements HasMiddleware
     }
     public function upload(Request $request)
     {
-        $request->validate(["file" => "required|file"]);
-        // Import logic placeholder - requires Maatwebsite Excel import class
-        return redirect(route("watch-list.nibss.all"))->with("success", "File uploaded successfully.");
+        $request->validate([
+            'file' => 'required|file|mimes:csv,xlsx,xls',
+        ]);
+
+        try {
+            $stats = (new WatchListImportService())->importNibss($request->file('file'));
+
+            activity()->log("NIBSS watchlist import: {$stats['created']} created, {$stats['skipped']} skipped, {$stats['errors']} errors.");
+
+            return redirect(route('watch-list.nibss.all'))->with(
+                'success',
+                "Import complete: {$stats['created']} added, {$stats['skipped']} skipped, {$stats['errors']} failed."
+            );
+        } catch (\Throwable $e) {
+            return redirect(route('watch-list.nibss.all'))->with('error', 'Import failed: ' . $e->getMessage());
+        }
     }
 }
