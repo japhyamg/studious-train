@@ -12,6 +12,7 @@
         <div class="heading-subtitle">IQR-based statistical outlier detection across customer peer groups</div>
     </div>
     <div class="page-heading-actions">
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#configModal"><i class="bi bi-gear me-1"></i>Configuration</button>
         <form method="POST" action="{{ route('peer-grouping.recompute') }}" onsubmit="return startRecompute(this)">
             @csrf
             <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-calculator me-1"></i>Recompute Thresholds</button>
@@ -55,63 +56,41 @@
     </div>
 </div>
 
-{{-- How it works --}}
-<div class="card mb-4">
-    <div class="card-header"><span><i class="bi bi-info-circle me-2"></i> How Peer Grouping Works</span></div>
-    <div class="card-body">
-        <div class="row g-4">
-            <div class="col-lg-7">
-                <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
-                    <p class="mb-2">Customers are segmented into <strong>peer groups</strong> using the fields you select
-                    (for example <em>gender</em>, <em>customer type</em> or <em>tier level</em>). For each group, the system
-                    studies the <strong>transaction amounts</strong> that group normally produces and learns a
-                    <strong>typical range</strong>.</p>
-                    <p class="mb-0">A transaction is flagged as an <strong>outlier</strong> when its amount sits far above
-                    that range — i.e. above the group's <strong>upper threshold</strong>.</p>
-                </div>
-            </div>
-            <div class="col-lg-5">
-                <div class="p-3 rounded-3" style="background:#faf8f2;border:1px solid var(--border-light);font-size:12px;color:var(--text-secondary)">
-                    <div style="font-weight:700;color:var(--text-primary);margin-bottom:8px"><i class="bi bi-braces me-1"></i>Threshold formula (Tukey's fences)</div>
-                    <div class="font-monospace" style="font-size:12px;line-height:1.8">
-                        Q1 = 25th percentile of amounts<br>
-                        Q3 = 75th percentile of amounts<br>
-                        IQR = Q3 − Q1<br>
-                        Upper threshold = Q3 + 1.5 × IQR
+{{-- How it works (accordion) --}}
+<div class="accordion mb-4" id="howItWorksAccordion">
+    <div class="accordion-item" style="border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--card-bg);box-shadow:var(--shadow-sm)">
+        <h2 class="accordion-header" id="howItWorksHeading">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#howItWorksCollapse" aria-expanded="false" aria-controls="howItWorksCollapse" style="background:transparent;font-weight:600;font-size:14px;color:var(--text-primary);box-shadow:none">
+                <i class="bi bi-info-circle me-2" style="color:var(--green-700)"></i> How Peer Grouping Works
+            </button>
+        </h2>
+        <div id="howItWorksCollapse" class="accordion-collapse collapse" aria-labelledby="howItWorksHeading" data-bs-parent="#howItWorksAccordion">
+            <div class="accordion-body" style="padding:18px 22px;border-top:1px solid var(--border-light)">
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+                            <p class="mb-2">Customers are segmented into <strong>peer groups</strong> using the fields you select
+                            (for example <em>gender</em>, <em>customer type</em> or <em>tier level</em>). For each group, the system
+                            studies the <strong>transaction amounts</strong> that group normally produces and learns a
+                            <strong>typical range</strong>.</p>
+                            <p class="mb-0">A transaction is flagged as an <strong>outlier</strong> when its amount sits far above
+                            that range — i.e. above the group's <strong>upper threshold</strong>.</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="p-3 rounded-3" style="background:#faf8f2;border:1px solid var(--border-light);font-size:12px;color:var(--text-secondary)">
+                            <div style="font-weight:700;color:var(--text-primary);margin-bottom:8px"><i class="bi bi-braces me-1"></i>Threshold formula (Tukey's fences)</div>
+                            <div class="font-monospace" style="font-size:12px;line-height:1.8">
+                                Q1 = 25th percentile of amounts<br>
+                                Q3 = 75th percentile of amounts<br>
+                                IQR = Q3 − Q1<br>
+                                Upper threshold = Q3 + 1.5 × IQR
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-{{-- Configuration --}}
-<div class="card mb-4">
-    <div class="card-header"><span><i class="bi bi-gear me-2"></i> Configuration</span></div>
-    <div class="card-body">
-        <form method="POST" action="{{ route('peer-grouping.update-settings') }}">@csrf
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label class="form-label">Recompute Interval (days)</label>
-                    <input type="number" name="pg_recompute_interval" class="form-control form-control-sm" value="{{ settings('pg_recompute_interval', 7) }}">
-                    <div class="form-text" style="font-size:10px">Thresholds are refreshed automatically after this many days</div>
-                </div>
-                <div class="col-md-8">
-                    <label class="form-label">Peer Group Fields</label>
-                    <div class="d-flex flex-wrap gap-3">
-                        @forelse($availableFields as $field)
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="selected_groups[]" value="{{ $field }}" id="pg_{{ $field }}" {{ in_array($field, $selectedFields) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="pg_{{ $field }}">{{ ucwords(str_replace('_',' ',$field)) }}</label>
-                        </div>
-                        @empty
-                        <span style="font-size:12px;color:var(--text-muted)">No available customer fields found.</span>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-            <div class="mt-3"><button class="btn btn-primary btn-sm"><i class="bi bi-check-lg me-1"></i>Save Settings</button></div>
-        </form>
     </div>
 </div>
 
@@ -204,6 +183,42 @@
     </div>
     @if($outliers->hasPages())<div class="card-footer">{{ $outliers->links() }}</div>@endif
 </div>
+
+{{-- Configuration Modal --}}
+<div class="modal fade" id="configModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+    <form method="POST" action="{{ route('peer-grouping.update-settings') }}">@csrf
+        <div class="modal-header">
+            <h6 class="modal-title"><i class="bi bi-gear me-2"></i>Peer Group Configuration</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Recompute Interval (days)</label>
+                    <input type="number" name="pg_recompute_interval" class="form-control form-control-sm" style="max-width:200px" value="{{ settings('pg_recompute_interval', 7) }}">
+                    <div class="form-text" style="font-size:10px">Thresholds are refreshed automatically after this many days</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Peer Group Fields</label>
+                    <div class="d-flex flex-wrap gap-3 p-3 rounded-3" style="background:#faf8f2;border:1px solid var(--border-light)">
+                        @forelse($availableFields as $field)
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="selected_groups[]" value="{{ $field }}" id="pg_{{ $field }}" {{ in_array($field, $selectedFields) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="pg_{{ $field }}">{{ ucwords(str_replace('_',' ',$field)) }}</label>
+                        </div>
+                        @empty
+                        <span style="font-size:12px;color:var(--text-muted)">No available customer fields found.</span>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check-lg me-1"></i>Save Settings</button>
+        </div>
+    </form>
+</div></div></div>
 @endsection
 
 @push('scripts')
