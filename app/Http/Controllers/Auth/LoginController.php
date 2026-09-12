@@ -22,7 +22,10 @@ class LoginController extends Controller
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
-            activity()->causedBy(Auth::user())->withProperties(['ip' => $request->ip()])->log('User logged in');
+            activity()->causedBy(Auth::user())->withProperties([
+                'ip' => $request->ip(),
+                'device' => $request->userAgent(),
+            ])->log('User logged in');
             return redirect()->intended(route('dashboard'));
         }
 
@@ -31,7 +34,10 @@ class LoginController extends Controller
 
     public function logout(Request $request)
     {
-        activity()->causedBy(Auth::user())->log('User logged out');
+        activity()->causedBy(Auth::user())->withProperties([
+            'ip' => $request->ip(),
+            'device' => $request->userAgent(),
+        ])->log('User logged out');
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

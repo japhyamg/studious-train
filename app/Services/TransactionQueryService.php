@@ -83,8 +83,16 @@ class TransactionQueryService
             return;
         }
 
-        // Determine which side(s) to evaluate
-        $sides = $this->determineSides($conditions, $transaction);
+        // Determine which side(s)/account(s) to evaluate.
+        //
+        // Instant rules run against a single transaction, so we resolve the
+        // relevant side(s) of that transaction. 24HrTask rules run from the
+        // cron job with no single transaction — they must evaluate the
+        // customer account passed in by runViaCronJob(), otherwise the daily
+        // rule engine silently no-ops.
+        $sides = $transaction
+            ? $this->determineSides($conditions, $transaction)
+            : ['account' => $accountNo];
 
         foreach ($sides as $side => $acctNo) {
             if (!$acctNo) continue;
@@ -114,8 +122,6 @@ class TransactionQueryService
      */
     private function determineSides(array $conditions, ?Transaction $transaction): array
     {
-        if (!$transaction) return ['account' => null]; // 24hr cron provides accountNo directly
-
         $hasSenderAttr = collect($conditions)->contains(fn($c) => ($c['attribute'] ?? '') === 'sender_account');
         $hasBeneficiaryAttr = collect($conditions)->contains(fn($c) => ($c['attribute'] ?? '') === 'beneficiary_account');
         $hasWatchlist = collect($conditions)->contains(fn($c) => in_array($c['attribute'] ?? '', ['in_internal_watchlist', 'in_nibss_watchlist']));
@@ -157,8 +163,16 @@ class TransactionQueryService
     ): void {
         $txnId = $evaluation->getTransactionId() ?? $transaction?->id;
 
-        // Check if already flagged
-        if (checkIfTransactionAlreadyFlagged($txnId, $rule->id)) return;
+        // Dedupe. Account-level rules evaluate a rolling window of transactions
+        // on every run (e.g. daily 24HrTask), so they must be keyed on the
+        // account within that window — otherwise each run re-flags the same
+        // account with the latest transaction id. Transaction-level rules key
+        // on the specific transaction.
+        if ($evaluation->isAccountLevel()) {
+            if (checkIfAccountAlreadyFlagged($evaluation->getFlaggedAccount() ?: $accountNo, $rule->id)) return;
+        } elseif (checkIfTransactionAlreadyFlagged($txnId, $rule->id)) {
+            return;
+        }
 
         // Resolve customer for this account
         $customer = Customer::where('account_number', $accountNo)->first();

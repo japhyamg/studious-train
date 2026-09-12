@@ -51,6 +51,7 @@
             <div class="col-auto d-flex gap-2">
                 <button class="btn btn-primary btn-sm"><i class="bi bi-funnel me-1"></i> Filter</button>
                 <a href="{{ route('audit-trail.index') }}" class="btn btn-outline-secondary btn-sm" data-bs-toggle="tooltip" title="Clear all"><i class="bi bi-x-lg"></i></a>
+                <a href="{{ route('audit-trail.export', request()->query()) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i> Export CSV</a>
             </div>
         </form>
     </div>

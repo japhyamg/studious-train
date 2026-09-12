@@ -22,13 +22,16 @@ class ApiController extends Controller
         $transaction = $this->transactionService->handle($request->all());
 
         if ($transaction) {
-            // Process transaction through rule engine, risk scoring, peer group, AI
-            (new RunTransactionQuery($transaction))->handle();
+            // Process transaction through rule engine, risk scoring, peer group,
+            // and AI on the queue so the API returns immediately and long-running
+            // HTTP checks (AI, PEP, sanctions) never block the request.
+            RunTransactionQuery::dispatch($transaction);
 
             return response()->json([
                 'status' => 'success',
+                'message' => 'Transaction accepted for processing.',
                 'data' => ['transaction' => $transaction],
-            ], 200);
+            ], 202);
         }
 
         return response()->json([

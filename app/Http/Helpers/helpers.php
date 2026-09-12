@@ -113,6 +113,23 @@ function checkIfTransactionAlreadyFlagged(?int $transactionId, ?int $ruleId = nu
 }
 
 /**
+ * Check if an account already has a case for a rule within a rolling window.
+ *
+ * Account-level rules evaluate a window of transactions on each run (e.g. the
+ * daily 24HrTask engine), so de-duplication must be scoped to the account and
+ * window rather than a single transaction id.
+ */
+function checkIfAccountAlreadyFlagged(?string $accountNo, ?int $ruleId = null, int $hours = 24): bool
+{
+    if (!$accountNo) return false;
+
+    return FlaggedCase::where('account_no', $accountNo)
+        ->where('transaction_rule_id', $ruleId)
+        ->where('created_at', '>=', now()->subHours($hours))
+        ->exists();
+}
+
+/**
  * Get customer from transaction
  */
 function getCustomerFromTransaction($transaction): array

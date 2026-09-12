@@ -157,7 +157,7 @@
                             <div style="font-size:11px;color:var(--text-muted)">{{ auth()->user()->email ?? '' }}</div>
                         </li>
                         <li><a class="dropdown-item" href="{{ route('account-settings-profile') }}"><i class="bi bi-person me-2" style="font-size:14px;opacity:.6"></i>My Account</a></li>
-                        <li><a class="dropdown-item" href="{{ route('audit-trail.index') }}"><i class="bi bi-journal-text me-2" style="font-size:14px;opacity:.6"></i>Activity Log</a></li>
+                        @can('audit-trail')<li><a class="dropdown-item" href="{{ route('audit-trail.index') }}"><i class="bi bi-journal-text me-2" style="font-size:14px;opacity:.6"></i>Activity Log</a></li>@endcan
                         <li><hr class="dropdown-divider"></li>
                         <li><form action="{{ route('logout') }}" method="POST">@csrf<button type="submit" class="dropdown-item text-danger"><i class="bi bi-box-arrow-right me-2" style="font-size:14px"></i>Sign Out</button></form></li>
                     </ul>

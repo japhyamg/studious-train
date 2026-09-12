@@ -189,9 +189,9 @@ Route::middleware(['auth'])->group(function () {
     });
 
     /*--- Audit Trail ---*/
-    Route::prefix('audit-trail')->name('audit-trail.')->group(function () {
+    Route::prefix('audit-trail')->name('audit-trail.')->middleware('permission:audit-trail')->group(function () {
         Route::get('/', [AuditTrailController::class, 'index'])->name('index');
-        Route::get('clear', [AuditTrailController::class, 'clearLog'])->name('clear');
+        Route::get('export', [AuditTrailController::class, 'export'])->name('export');
     });
 
     /*--- Account Settings ---*/
@@ -211,10 +211,14 @@ Route::middleware(['auth'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Cron Job Routes (no auth — called by server crontab)
+| Cron Job Routes
+|
+| The scheduler (routes/console.php → php artisan schedule:run) invokes the
+| controller methods directly, so these HTTP endpoints are only manual
+| triggers. They mutate state, therefore they are restricted to admins.
 |--------------------------------------------------------------------------
 */
-Route::prefix('cron-job')->name('cron-job.')->group(function () {
+Route::prefix('cron-job')->name('cron-job.')->middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/review-scheduler', [\App\Http\Controllers\CronJobController::class, 'reviewScheduler'])->name('review-scheduler');
     Route::get('/24hr-rule-engine', [\App\Http\Controllers\CronJobController::class, 'dailyRuleEngine'])->name('24hr-rule-engine');
     Route::get('/watchlist-screening', [\App\Http\Controllers\CronJobController::class, 'watchListScreening'])->name('watchlist-screening');
