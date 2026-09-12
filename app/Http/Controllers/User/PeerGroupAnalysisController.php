@@ -24,7 +24,7 @@ class PeerGroupAnalysisController extends Controller
         $availableFields = getCustomerDetailsColumnNames();
         $selectedFields = $this->service->selectedFields();
 
-        $thresholds = $this->service->latestThresholds($selectedFields);
+        $thresholdRows = $this->paginatedThresholdRows($selectedFields);
 
         $outliers = PeerGroupOutlier::with(['transaction', 'customer'])
             ->orderByDesc('created_at')
@@ -38,8 +38,49 @@ class PeerGroupAnalysisController extends Controller
         ];
 
         return view('users.peer-grouping.index', compact(
-            'availableFields', 'selectedFields', 'thresholds', 'outliers', 'stats'
+            'availableFields', 'selectedFields', 'thresholdRows', 'outliers', 'stats'
         ));
+    }
+
+    /**
+     * Flatten every field's computed thresholds into a paginated list of
+     * per-group rows (field, group, sample, Q1, Q3, IQR, upper, computed).
+     */
+    private function paginatedThresholdRows(array $fields): \Illuminate\Pagination\LengthAwarePaginator
+    {
+        $rows = collect();
+
+        foreach ($this->service->latestThresholds($fields) as $field => $t) {
+            if (!$t || !is_array($t->thresholds)) continue;
+
+            foreach ($t->thresholds as $group => $detail) {
+                $d = is_array($detail)
+                    ? $detail
+                    : ['upper' => $detail, 'q1' => null, 'q3' => null, 'iqr' => null, 'sample' => null];
+
+                $rows->push((object) [
+                    'field' => $field,
+                    'group' => $group,
+                    'sample' => $d['sample'] ?? null,
+                    'q1' => $d['q1'] ?? null,
+                    'q3' => $d['q3'] ?? null,
+                    'iqr' => $d['iqr'] ?? null,
+                    'upper' => $d['upper'] ?? null,
+                    'computed' => $t->created_at,
+                ]);
+            }
+        }
+
+        $page = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 15;
+
+        return new \Illuminate\Pagination\LengthAwarePaginator(
+            $rows->forPage($page, $perPage)->values(),
+            $rows->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
     }
 
     public function updateSettings(Request $request)

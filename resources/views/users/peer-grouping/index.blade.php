@@ -98,32 +98,22 @@
 <div class="card mb-4">
     <div class="card-header">
         <span><i class="bi bi-braces me-2"></i> Current Thresholds</span>
+        <span class="badge badge-pill" style="background:#faf8f2;color:var(--text-muted);border:1px solid var(--border-light)">{{ $thresholdRows->total() }} records</span>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive"><table class="table table-hover mb-0">
             <thead><tr><th>Field</th><th>Group</th><th>Sample</th><th>Q1</th><th>Q3</th><th>IQR</th><th>Upper Threshold</th><th>Computed</th></tr></thead>
             <tbody>
-                @php $rows = []; @endphp
-                @foreach($thresholds as $field => $t)
-                    @if($t && is_array($t->thresholds))
-                        @foreach($t->thresholds as $group => $detail)
-                            @php
-                                $d = is_array($detail) ? $detail : ['upper' => $detail, 'q1' => null, 'q3' => null, 'iqr' => null, 'sample' => null];
-                                $rows[] = ['field' => $field, 'group' => $group, 'd' => $d, 'computed' => $t->created_at];
-                            @endphp
-                        @endforeach
-                    @endif
-                @endforeach
-                @forelse($rows as $r)
+                @forelse($thresholdRows as $r)
                 <tr>
-                    <td><span class="badge badge-green">{{ ucwords(str_replace('_',' ',$r['field'])) }}</span></td>
-                    <td class="fw-medium">{{ $r['group'] ?: '—' }}</td>
-                    <td class="font-monospace" style="font-size:12px">{{ $r['d']['sample'] ?? '—' }}</td>
-                    <td class="font-monospace" style="font-size:12px">{{ isset($r['d']['q1']) ? moneyFormat($r['d']['q1']) : '—' }}</td>
-                    <td class="font-monospace" style="font-size:12px">{{ isset($r['d']['q3']) ? moneyFormat($r['d']['q3']) : '—' }}</td>
-                    <td class="font-monospace" style="font-size:12px">{{ isset($r['d']['iqr']) ? moneyFormat($r['d']['iqr']) : '—' }}</td>
-                    <td><span class="badge" style="background:var(--green-700);color:#fff">{{ isset($r['d']['upper']) ? moneyFormat($r['d']['upper']) : '—' }}</span></td>
-                    <td style="font-size:12px;color:var(--text-muted)">{{ \Carbon\Carbon::parse($r['computed'])->format('M d, Y H:i') }}</td>
+                    <td><span class="badge badge-green">{{ ucwords(str_replace('_',' ',$r->field)) }}</span></td>
+                    <td class="fw-medium">{{ $r->group ?: '—' }}</td>
+                    <td class="font-monospace" style="font-size:12px">{{ $r->sample ?? '—' }}</td>
+                    <td class="font-monospace" style="font-size:12px">{{ $r->q1 !== null ? moneyFormat($r->q1) : '—' }}</td>
+                    <td class="font-monospace" style="font-size:12px">{{ $r->q3 !== null ? moneyFormat($r->q3) : '—' }}</td>
+                    <td class="font-monospace" style="font-size:12px">{{ $r->iqr !== null ? moneyFormat($r->iqr) : '—' }}</td>
+                    <td><span class="badge" style="background:var(--green-700);color:#fff">{{ $r->upper !== null ? moneyFormat($r->upper) : '—' }}</span></td>
+                    <td style="font-size:12px;color:var(--text-muted)">{{ \Carbon\Carbon::parse($r->computed)->format('M d, Y H:i') }}</td>
                 </tr>
                 @empty
                 <tr><td colspan="8">
@@ -137,6 +127,7 @@
             </tbody>
         </table></div>
     </div>
+    @if($thresholdRows->hasPages())<div class="card-footer">{{ $thresholdRows->links() }}</div>@endif
 </div>
 
 {{-- Outliers --}}
