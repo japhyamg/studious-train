@@ -104,6 +104,40 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   (gated by setting `risk_rating_demo_mode`).
 - Seeder sets `risk_rating_demo_mode` = `false` by default.
 
+### 2.5 Phase 1 — risk-level change history + export buttons (commit `6456433`)
+
+**Risk-level change history (CBN 5.4(a)(v))**
+- New `risk_level_changes` table (migration `...000002...`) — append-only record
+  of every risk classification change with `from_level`, `to_level`, `score`,
+  and `driver`.
+- `Customer::applyRiskLevel($level, $score, $driver)` centralises level
+  updates: records a change when the classification moves and logs it in the
+  activity log.
+- All rating paths now route through it: `RiskRatingService::rateCustomer()`,
+  `risk:rate` command, `CronJobController::riskRateNewCustomers()`, and
+  `RiskRatingController::scheduleReviewsForRatedCustomers()`.
+- **Test:** run `php artisan risk:rate`; then Risk Levels page →
+  **"Risk Level Changes"** downloads an xlsx listing customer, account number,
+  from → to level, score, driver. Re-run after editing a customer's data that
+  changes their score; only genuine changes appear (no duplicates).
+
+**Event-driven reviews (CBN 5.2(a)(ii))**
+- `Customer::scheduleNextReview(bool $fromNow = false)` — periodic reviews are
+  scheduled from onboarding/last-review date (matching the register example:
+  onboarded Jan 1 → due Feb 1); a risk-category *change* reschedules from the
+  change date.
+- **Test:** after `risk:rate`, confirm `next_review_date` on a customer equals
+  onboarding date + `review_schedule_days`. Change their level; confirm
+  `next_review_date` moves to now + schedule days and a `risk_level_changes`
+  row is written.
+
+**Export buttons (CBN 5.7(a)(iv))**
+- CARRD, Reviewer Performance, and False Positive dashboards now have **CSV**
+  and **PDF** export buttons in the page header (new routes
+  `carrd.export`, `performance.export`, `false-positive-dashboard.export`).
+- **Test:** open each dashboard → click CSV (downloads) and PDF (downloads,
+  landscape A4 via DomPDF).
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
@@ -159,7 +193,7 @@ nonce → 401; expired timestamp → 401.
 
 ```bash
 composer install --no-dev --optimize-autoloader
-php artisan migrate                  # seeds default Risk Profile 1
+php artisan migrate                  # seeds default Risk Profile 1 + risk_level_changes
 php artisan db:seed --class=DemoDataSeeder   # demo users/roles/settings (optional)
 
 # Verify schedulers are registered (expect risk-rating, risk-rating-demo, …)
@@ -181,11 +215,11 @@ php artisan risk:rate
 
 ## 5. Roadmap (see `docs/IMPLEMENTATION-PLAN.md` for full detail)
 
-- ✅ **Phase 0** — stabilise & secure (this batch).
+- ✅ **Phase 0** — stabilise & secure.
 - ✅ **Quick win 1** — automated risk rating (default profile + nightly 23:59).
-- ⬜ **Quick win 2** — export buttons on CARRD / case-performance /
+- ✅ **Quick win 2** — export buttons on CARRD / case-performance /
   false-positive dashboards.
-- ⬜ **Phase 1** — risk-level change history + event-driven reviews.
+- ✅ **Phase 1** — risk-level change history + event-driven reviews.
 - ⬜ **Phase 2** — Customer 360 single view (search + PDF/CSV export).
 - ⬜ **Phase 3** — screening as a service (nightly PAS, list-update logs,
   fuzzy matching, PEP auto-flag).
