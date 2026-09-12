@@ -213,7 +213,10 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
   - **Positional fallback** when there is no header row.
   - Skips empty rows and rows with no name/identifier; reports
     `created / skipped / errors` in the flash message.
-- Files accepted: `.csv`, `.xlsx`, `.xls`.
+- Files accepted: `.csv`, `.xlsx`, `.xls` (validated by **extension** via the
+  `extensions` rule — not by finfo MIME sniffing, which mis-reports real Office
+  files as `application/zip`/`application/octet-stream` and rejected valid
+  uploads).
 
 **UI**
 - "Add Entry" and "Upload CSV/Excel" are now **modals**; the watchlist is a
