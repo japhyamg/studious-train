@@ -12,6 +12,10 @@
         <h4><i class="bi bi-pie-chart" style="color:var(--green-600);opacity:.6"></i> False Positive Dashboard</h4>
         <div class="heading-subtitle">Monitor false positive rates and set alerting thresholds</div>
     </div>
+    <div class="page-heading-actions">
+        <a href="{{ route('case-management.false-positive-dashboard.export', ['format' => 'csv']) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i> CSV</a>
+        <a href="{{ route('case-management.false-positive-dashboard.export', ['format' => 'pdf']) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
+    </div>
 </div>
 
 <div class="card mb-4">

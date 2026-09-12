@@ -28,6 +28,10 @@
         <h4><i class="bi bi-speedometer2" style="color:var(--green-600);opacity:.6"></i> Reviewer Performance</h4>
         <div class="heading-subtitle">Track case resolution metrics across team members</div>
     </div>
+    <div class="page-heading-actions">
+        <a href="{{ route('case-management.performance.export', ['format' => 'csv']) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i> CSV</a>
+        <a href="{{ route('case-management.performance.export', ['format' => 'pdf']) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
+    </div>
 </div>
 
 {{-- KPI Cards --}}

@@ -39,10 +39,10 @@ class CaseManagementController extends Controller implements HasMiddleware
             new Middleware('permission:case-list', only: ['index']),
             new Middleware('permission:case-view|case-add-comment', only: ['show', 'update']),
             new Middleware('permission:case-add-comment', only: ['update']),
-            new Middleware('permission:case-performance', only: ['casePerformance']),
+            new Middleware('permission:case-performance', only: ['casePerformance', 'exportPerformance']),
             new Middleware('permission:case-export', only: ['export']),
-            new Middleware('permission:case-carrd', only: ['carrd']),
-            new Middleware('permission:case-false-positive-dashboard', only: ['falsePositiveDashboard', 'setFalsePositiveThreshold']),
+            new Middleware('permission:case-carrd', only: ['carrd', 'exportCarrd']),
+            new Middleware('permission:case-false-positive-dashboard', only: ['falsePositiveDashboard', 'setFalsePositiveThreshold', 'exportFalsePositive']),
         ];
     }
 
@@ -322,5 +322,70 @@ class CaseManagementController extends Controller implements HasMiddleware
         Cache::forget(config('cache.prefix') . '-settings');
 
         return redirect(route('case-management.false-positive-dashboard'))->with('success', 'Threshold set successfully.');
+    }
+
+    // ─── Dashboard exports (CSV / PDF) ───────────────────────────
+
+    public function exportCarrd(Request $request)
+    {
+        return $this->exportTable($this->service->getCARRDTableData(), 'CARRD', $request->input('format', 'csv'));
+    }
+
+    public function exportPerformance(Request $request)
+    {
+        $rows = $this->service->getReviewerPerformance($request->from ?? null, $request->to ?? null);
+        return $this->exportTable($rows, 'Reviewer Performance', $request->input('format', 'csv'));
+    }
+
+    public function exportFalsePositive(Request $request)
+    {
+        return $this->exportTable($this->service->getFalsePositiveData(), 'False Positive', $request->input('format', 'csv'));
+    }
+
+    /**
+     * Export an associative row set as CSV or PDF.
+     */
+    private function exportTable(array $rows, string $title, string $format)
+    {
+        if (empty($rows)) {
+            return back()->with('error', 'No data to export.');
+        }
+
+        $format = strtolower($format);
+        $headers = array_keys($rows[0]);
+        $labels  = array_map(fn($h) => Str::headline($h), $headers);
+
+        if ($format === 'pdf') {
+            if (!class_exists('\\Barryvdh\\DomPDF\\Facade\\Pdf')) {
+                return back()->with('error', 'PDF export is unavailable.');
+            }
+
+            $html = '<h4>' . e($title) . '</h4><table border="1" cellpadding="5" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:11px;">';
+            $html .= '<thead><tr>' . implode('', array_map(fn($l) => '<th>' . e($l) . '</th>', $labels)) . '</tr></thead><tbody>';
+            foreach ($rows as $row) {
+                $html .= '<tr>' . implode('', array_map(function ($h) use ($row) {
+                    return '<td>' . e((string) ($row[$h] ?? '')) . '</td>';
+                }, $headers)) . '</tr>';
+            }
+            $html .= '</tbody></table>';
+
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'landscape');
+            return $pdf->download(Str::slug($title) . '_' . now()->format('Y-m-d_H-i-s') . '.pdf');
+        }
+
+        $filename = Str::slug($title) . '_' . now()->format('Y-m-d_H-i-s') . '.csv';
+        $handle = fopen('php://temp', 'w');
+        fputcsv($handle, $labels);
+        foreach ($rows as $row) {
+            fputcsv($handle, array_map(fn($h) => $row[$h] ?? '', $headers));
+        }
+        rewind($handle);
+        $content = stream_get_contents($handle);
+        fclose($handle);
+
+        return response($content, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 }

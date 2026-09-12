@@ -46,6 +46,8 @@
         <div class="heading-subtitle">Track case lifecycle — from creation to resolution with aging metrics</div>
     </div>
     <div class="page-heading-actions">
+        <a href="{{ route('case-management.carrd.export', ['format' => 'csv']) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-download me-1"></i> CSV</a>
+        <a href="{{ route('case-management.carrd.export', ['format' => 'pdf']) }}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-pdf me-1"></i> PDF</a>
         <a href="{{ route('case-management.index') }}" class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-left me-1"></i> Back to Cases</a>
     </div>
 </div>
