@@ -200,6 +200,31 @@ Plus risk rating (CDD/EDD scheduling), RBAC (Spatie), activity logging
 - Customer page → search bar → type a BVN → lands on that customer's 360.
 - Click CSV (downloads) and PDF (downloads, portrait A4).
 
+### 2.8 Watchlist upload + full-width tables (commit `8c1d14a`)
+
+**Upload was a placeholder — now it really imports.**
+- Both `WatchListController::upload()` and `NIBSSWatchListController::upload()`
+  only flashed "File uploaded successfully" without reading the file.
+- New `WatchListImportService` reads CSV/XLSX via `Maatwebsite\Excel` and
+  imports rows into `internal_watch_lists` / `nibss_watch_lists`.
+  - **Header-aware**: recognises columns like `first_name`/`firstname`/`given
+    name`, `account_no`/`account number`, `bvn`, `nin`, `category`, `reason`,
+    `requesting_bank`, `watchlisted_date` (any case/underscore/space).
+  - **Positional fallback** when there is no header row.
+  - Skips empty rows and rows with no name/identifier; reports
+    `created / skipped / errors` in the flash message.
+- Files accepted: `.csv`, `.xlsx`, `.xls`.
+
+**UI**
+- "Add Entry" and "Upload CSV/Excel" are now **modals**; the watchlist is a
+  **full-width table** (for both internal and NIBSS pages).
+
+**Test**
+- Watch List → Internal → Upload CSV/Excel → choose a CSV with a header row
+  (`first_name,last_name,account_no,bvn,nin`) → entries appear and the flash
+  reports counts. Repeat on the NIBSS page.
+- A headerless CSV (positional order) also imports.
+
 ---
 
 ## 3. Testing the authenticated API (worked example)
